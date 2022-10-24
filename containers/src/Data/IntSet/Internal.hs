@@ -3,7 +3,9 @@
 {-# LANGUAGE PatternGuards #-}
 #ifdef __GLASGOW_HASKELL__
 {-# LANGUAGE DeriveLift #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MagicHash #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeFamilies #-}
 #endif
@@ -101,7 +103,10 @@
 
 module Data.IntSet.Internal (
     -- * Set type
-      IntSet(..), Key -- instance Eq,Show
+      IntSet'(..), Key -- instance Eq,Show
+    , IntSet
+    , NonEmptyIntSet
+    , pattern Nil
     , Prefix, Mask, BitMap
 
     -- * Operators
@@ -198,6 +203,7 @@ import Data.Semigroup (Semigroup(stimes))
 import Data.Semigroup (Semigroup((<>)))
 #endif
 import Data.Semigroup (stimesIdempotentMonoid)
+import Data.Void (Void)
 import Prelude hiding (filter, foldr, foldl, null, map)
 
 import Utils.Containers.Internal.BitUtil
@@ -247,7 +253,8 @@ m1 \\ m2 = difference m1 m2
 -- | A set of integers.
 
 -- See Note: Order of constructors
-data IntSet = Bin {-# UNPACK #-} !Prefix {-# UNPACK #-} !Mask !IntSet !IntSet
+data IntSet' e
+  = Bin {-# UNPACK #-} !Prefix {-# UNPACK #-} !Mask !IntSet !IntSet
 -- Invariant: Nil is never found as a child of Bin.
 -- Invariant: The Mask is a power of 2.  It is the largest bit position at which
 --            two elements of the set differ.
@@ -255,11 +262,18 @@ data IntSet = Bin {-# UNPACK #-} !Prefix {-# UNPACK #-} !Mask !IntSet !IntSet
 --            the left of the Mask bit.
 -- Invariant: In Bin prefix mask left right, left consists of the elements that
 --            don't have the mask bit set; right is all the elements that do.
-            | Tip {-# UNPACK #-} !Prefix {-# UNPACK #-} !BitMap
+  | Tip {-# UNPACK #-} !Prefix {-# UNPACK #-} !BitMap
 -- Invariant: The Prefix is zero for the last 5 (on 32 bit arches) or 6 bits
 --            (on 64 bit arches). The values of the set represented by a tip
 --            are the prefix plus the indices of the set bits in the bit map.
-            | Nil
+  | Nil' e
+
+type IntSet = IntSet' ()
+type NonEmptyIntSet = IntSet' Void
+
+{-# COMPLETE Bin, Tip, Nil #-}
+pattern Nil :: IntSet
+pattern Nil = Nil' ()
 
 -- A number stored in a set is stored as
 -- * Prefix (all but last 5-6 bits) and

@@ -1,6 +1,7 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE PatternGuards #-}
+{-# LANGUAGE PatternSynonyms #-}
 
 {-# OPTIONS_GHC -fno-warn-incomplete-uni-patterns #-}
 
@@ -87,7 +88,10 @@
 module Data.IntMap.Strict.Internal (
     -- * Map type
 #if !defined(TESTING)
-    IntMap, Key          -- instance Eq,Show
+      IntMap'(..), Key   -- instance Eq,Show
+    , IntMap
+    , NonEmptyIntMap
+    , pattern Nil
 #else
     IntMap(..), Key          -- instance Eq,Show
 #endif
@@ -260,7 +264,10 @@ import Prelude hiding (lookup,map,filter,foldr,foldl,null)
 import Data.Bits
 import qualified Data.IntMap.Internal as L
 import Data.IntMap.Internal
-  ( IntMap (..)
+  ( IntMap' (..)
+  , IntMap
+  , NonEmptyIntMap
+  , pattern Nil
   , Key
   , mask
   , branchMask

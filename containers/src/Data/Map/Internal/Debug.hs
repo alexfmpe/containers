@@ -1,9 +1,10 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE PatternSynonyms #-}
 #include "containers.h"
 
 module Data.Map.Internal.Debug where
 
-import Data.Map.Internal (Map (..), size, delta)
+import Data.Map.Internal (Map' (..), Map, pattern Tip, size, delta)
 import Control.Monad (guard)
 
 -- | \(O(n)\). Show the tree that implements the map. The tree is shown

@@ -6,6 +6,8 @@
 #endif
 #ifdef __GLASGOW_HASKELL__
 {-# LANGUAGE DeriveLift #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RoleAnnotations #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -123,7 +125,10 @@
 
 module Data.Set.Internal (
             -- * Set type
-              Set(..)       -- instance Eq,Ord,Show,Read,Data
+              Set'(..)      -- instance Eq,Ord,Show,Read,Data
+            , Set
+            , NonEmptySet
+            , pattern Tip
             , Size
 
             -- * Operators
@@ -249,6 +254,7 @@ import Data.Semigroup (stimesIdempotentMonoid, stimesIdempotent)
 import Data.Functor.Classes
 import Data.Functor.Identity (Identity)
 import qualified Data.Foldable as Foldable
+import Data.Void (Void)
 import Control.DeepSeq (NFData(rnf))
 
 import Utils.Containers.Internal.StrictPair
@@ -282,13 +288,21 @@ m1 \\ m2 = difference m1 m2
 -- | A set of values @a@.
 
 -- See Note: Order of constructors
-data Set a    = Bin {-# UNPACK #-} !Size !a !(Set a) !(Set a)
-              | Tip
+data Set' e a
+  = Bin {-# UNPACK #-} !Size !a !(Set a) !(Set a)
+  | Tip' e
 
 type Size     = Int
 
+{-# COMPLETE Bin, Tip #-}
+pattern Tip :: Set a
+pattern Tip = Tip' ()
+
+type Set = Set' ()
+type NonEmptySet = Set' Void
+
 #ifdef __GLASGOW_HASKELL__
-type role Set nominal
+type role Set' nominal nominal
 #endif
 
 -- | @since FIXME

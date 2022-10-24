@@ -3,6 +3,8 @@
 {-# LANGUAGE PatternGuards #-}
 #if defined(__GLASGOW_HASKELL__)
 {-# LANGUAGE DeriveLift #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RoleAnnotations #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE Trustworthy #-}
@@ -129,7 +131,10 @@
 
 module Data.Map.Internal (
     -- * Map type
-      Map(..)          -- instance Eq,Show,Read
+      Map'(..)         -- instance Eq,Show,Read
+    , Map
+    , NonEmptyMap
+    , pattern Tip
     , Size
 
     -- * Operators
@@ -383,6 +388,7 @@ import qualified Data.Foldable as Foldable
 #if MIN_VERSION_base(4,10,0)
 import Data.Bifoldable
 #endif
+import Data.Void (Void)
 import Prelude hiding (lookup, map, filter, foldr, foldl, null, splitAt, take, drop)
 
 import qualified Data.Set.Internal as Set
@@ -458,13 +464,21 @@ m1 \\ m2 = difference m1 m2
 -- their union @m1 <> m2@ maps @k@ to @a1@.
 
 -- See Note: Order of constructors
-data Map k a  = Bin {-# UNPACK #-} !Size !k a !(Map k a) !(Map k a)
-              | Tip
+data Map' e k a
+  = Bin {-# UNPACK #-} !Size !k a !(Map k a) !(Map k a)
+  | Tip' e
 
 type Size     = Int
 
+type Map = Map' ()
+type NonEmptyMap = Map' Void
+
+{-# COMPLETE Bin, Tip #-}
+pattern Tip :: Map k a
+pattern Tip = Tip' ()
+
 #ifdef __GLASGOW_HASKELL__
-type role Map nominal representational
+type role Map' nominal nominal representational
 #endif
 
 #ifdef __GLASGOW_HASKELL__
