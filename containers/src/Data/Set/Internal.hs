@@ -7,7 +7,9 @@
 #if !defined(TESTING) && defined(__GLASGOW_HASKELL__)
 {-# LANGUAGE Trustworthy #-}
 #endif
-#if __GLASGOW_HASKELL__ >= 708
+#ifdef __GLASGOW_HASKELL__
+{-# LANGUAGE DeriveLift #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE RoleAnnotations #-}
 {-# LANGUAGE TypeFamilies #-}
 #endif
@@ -124,7 +126,9 @@
 
 module Data.Set.Internal (
             -- * Set type
-              Set(..)       -- instance Eq,Ord,Show,Read,Data,Typeable
+              Set'(..)      -- instance Eq,Ord,Show,Read,Data
+            , Set
+            , NonEmptySet
             , Size
 
             -- * Operators
@@ -251,10 +255,9 @@ import Data.Functor.Classes
 import Data.Functor.Identity (Identity)
 #endif
 import qualified Data.Foldable as Foldable
-#if !MIN_VERSION_base(4,8,0)
 import Data.Foldable (Foldable (foldMap))
-#endif
 import Data.Typeable
+import Data.Void (Void)
 import Control.DeepSeq (NFData(rnf))
 
 import Utils.Containers.Internal.StrictPair
@@ -289,13 +292,17 @@ m1 \\ m2 = difference m1 m2
 -- | A set of values @a@.
 
 -- See Note: Order of constructors
-data Set a    = Bin {-# UNPACK #-} !Size !a !(Set a) !(Set a)
-              | Tip
+data Set' e a
+  = Bin {-# UNPACK #-} !Size !a !(Set a) !(Set a)
+  | Tip e
 
 type Size     = Int
 
-#if __GLASGOW_HASKELL__ >= 708
-type role Set nominal
+type Set = Set' ()
+type NonEmptySet = Set' Void
+
+#ifdef __GLASGOW_HASKELL__
+type role Set' nominal nominal
 #endif
 
 instance Ord a => Monoid (Set a) where

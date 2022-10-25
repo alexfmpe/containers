@@ -1,9 +1,12 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE PatternGuards #-}
-#if __GLASGOW_HASKELL__
-{-# LANGUAGE MagicHash, DeriveDataTypeable, StandaloneDeriving #-}
+#ifdef __GLASGOW_HASKELL__
+{-# LANGUAGE DeriveLift #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MagicHash #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE StandaloneDeriving #-}
 #endif
 #if !defined(TESTING) && defined(__GLASGOW_HASKELL__)
 {-# LANGUAGE Trustworthy #-}
@@ -75,7 +78,9 @@
 
 module Data.IntMap.Internal (
     -- * Map type
-      IntMap(..), Key          -- instance Eq,Show
+      IntMap'(..), Key         -- instance Eq,Show
+    , IntMap
+    , NonEmptyIntMap
 
     -- * Operators
     , (!), (!?), (\\)
@@ -321,6 +326,7 @@ import Data.Foldable (Foldable())
 #endif
 import Data.Maybe (fromMaybe)
 import Data.Typeable
+import Data.Void (Void)
 import Prelude hiding (lookup, map, filter, foldr, foldl, null)
 
 import Data.IntSet.Internal (Key)
@@ -365,10 +371,8 @@ intFromNat = fromIntegral
 -- | A map of integers to values @a@.
 
 -- See Note: Order of constructors
-data IntMap a = Bin {-# UNPACK #-} !Prefix
-                    {-# UNPACK #-} !Mask
-                    !(IntMap a)
-                    !(IntMap a)
+data IntMap' e a
+  = Bin {-# UNPACK #-} !Prefix {-# UNPACK #-} !Mask !(IntMap a) (IntMap a)
 -- Fields:
 --   prefix: The most significant bits shared by all keys in this Bin.
 --   mask: The switching bit to determine if a key should follow the left
@@ -380,12 +384,14 @@ data IntMap a = Bin {-# UNPACK #-} !Prefix
 --            the left of the Mask bit.
 -- Invariant: In (Bin prefix mask left right), left consists of the elements that
 --            don't have the mask bit set; right is all the elements that do.
-              | Tip {-# UNPACK #-} !Key a
-              | Nil
+  | Tip {-# UNPACK #-} !Key a
+  | Nil e
 
 type Prefix = Int
 type Mask   = Int
 
+type IntMap = IntMap' ()
+type NonEmptyIntMap = IntMap' Void
 
 -- Some stuff from "Data.IntSet.Internal", for 'restrictKeys' and
 -- 'withoutKeys' to use.

@@ -87,7 +87,9 @@
 module Data.IntMap.Strict.Internal (
     -- * Map type
 #if !defined(TESTING)
-    IntMap, Key          -- instance Eq,Show
+      IntMap'(..), Key   -- instance Eq,Show
+    , IntMap
+    , NonEmptyIntMap
 #else
     IntMap(..), Key          -- instance Eq,Show
 #endif
@@ -260,7 +262,9 @@ import Prelude hiding (lookup,map,filter,foldr,foldl,null)
 import Data.Bits
 import qualified Data.IntMap.Internal as L
 import Data.IntMap.Internal
-  ( IntMap (..)
+  ( IntMap' (..)
+  , IntMap
+  , NonEmptyIntMap
   , Key
   , mask
   , branchMask

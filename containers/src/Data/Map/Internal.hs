@@ -1,8 +1,13 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE PatternGuards #-}
-#if __GLASGOW_HASKELL__
-{-# LANGUAGE DeriveDataTypeable, StandaloneDeriving #-}
+#if defined(__GLASGOW_HASKELL__)
+{-# LANGUAGE DeriveLift #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE RoleAnnotations #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE Trustworthy #-}
+{-# LANGUAGE TypeFamilies #-}
 #endif
 #if defined(__GLASGOW_HASKELL__)
 {-# LANGUAGE Trustworthy #-}
@@ -132,7 +137,9 @@
 
 module Data.Map.Internal (
     -- * Map type
-      Map(..)          -- instance Eq,Show,Read
+      Map'(..)         -- instance Eq,Show,Read
+    , Map
+    , NonEmptyMap
     , Size
 
     -- * Operators
@@ -398,6 +405,7 @@ import Data.Foldable (Foldable())
 import Data.Bifoldable
 #endif
 import Data.Typeable
+import Data.Void (Void)
 import Prelude hiding (lookup, map, filter, foldr, foldl, null, splitAt, take, drop)
 
 import qualified Data.Set.Internal as Set
@@ -479,13 +487,17 @@ m1 \\ m2 = difference m1 m2
 -- their union @m1 <> m2@ maps @k@ to @a1@.
 
 -- See Note: Order of constructors
-data Map k a  = Bin {-# UNPACK #-} !Size !k a !(Map k a) !(Map k a)
-              | Tip
+data Map' e k a
+  = Bin {-# UNPACK #-} !Size !k a !(Map k a) !(Map k a)
+  | Tip e
 
 type Size     = Int
 
-#if __GLASGOW_HASKELL__ >= 708
-type role Map nominal representational
+type Map = Map' ()
+type NonEmptyMap = Map' Void
+
+#ifdef __GLASGOW_HASKELL__
+type role Map' nominal nominal representational
 #endif
 
 instance (Ord k) => Monoid (Map k v) where

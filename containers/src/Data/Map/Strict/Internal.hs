@@ -85,7 +85,9 @@ module Data.Map.Strict.Internal
     -- $strictness
 
     -- * Map type
-    Map(..)          -- instance Eq,Show,Read
+      Map'(..)       -- instance Eq,Show,Read
+    , Map
+    , NonEmptyMap
     , L.Size
 
     -- * Operators
@@ -309,7 +311,9 @@ module Data.Map.Strict.Internal
 import Prelude hiding (lookup,map,filter,foldr,foldl,null,take,drop,splitAt)
 
 import Data.Map.Internal
-  ( Map (..)
+  ( Map' (..)
+  , Map
+  , NonEmptyMap
   , AreWeStrict (..)
   , WhenMissing (..)
   , WhenMatched (..)
