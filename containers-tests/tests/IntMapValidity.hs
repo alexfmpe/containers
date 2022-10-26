@@ -15,17 +15,17 @@ valid t =
   counterexample "commonPrefix" (commonPrefix t) .&&.
   counterexample "maskRespected" (maskRespected t)
 
--- Invariant: Nil is never found as a child of Bin.
+-- Invariant: (Nil ()) is never found as a child of Bin.
 nilNeverChildOfBin :: IntMap a  -> Bool
 nilNeverChildOfBin t =
   case t of
-    Nil -> True
+    (Nil ()) -> True
     Tip _ _ -> True
     Bin _ _ l r -> noNilInSet l && noNilInSet r
   where
     noNilInSet t' =
       case t' of
-        Nil -> False
+        (Nil ()) -> False
         Tip _ _ -> True
         Bin _ _ l' r' -> noNilInSet l' && noNilInSet r'
 
@@ -34,7 +34,7 @@ nilNeverChildOfBin t =
 maskPowerOfTwo :: IntMap a -> Bool
 maskPowerOfTwo t =
   case t of
-    Nil -> True
+    (Nil ()) -> True
     Tip _ _ -> True
     Bin _ m l r ->
       bitcount 0 (fromIntegral m) == 1 && maskPowerOfTwo l && maskPowerOfTwo r
@@ -44,7 +44,7 @@ maskPowerOfTwo t =
 commonPrefix :: IntMap a -> Bool
 commonPrefix t =
   case t of
-    Nil -> True
+    (Nil ()) -> True
     Tip _ _ -> True
     b@(Bin p _ l r) -> all (sharedPrefix p) (keys b) && commonPrefix l && commonPrefix r
   where
@@ -56,7 +56,7 @@ commonPrefix t =
 maskRespected :: IntMap a -> Bool
 maskRespected t =
   case t of
-    Nil -> True
+    (Nil ()) -> True
     Tip _ _ -> True
     Bin _ binMask l r ->
       all (\x -> zero x binMask) (keys l) &&

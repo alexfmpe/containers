@@ -145,7 +145,7 @@ unstableSortBy cmp (Seq xs) =
     maybe
         (Seq EmptyT)
         (execState (replicateA (size xs) (State (popMinQ cmp))))
-        (buildQ cmp (\(Elem x) -> Q x Nil) xs)
+        (buildQ cmp (\(Elem x) -> Q x (Nil ())) xs)
 
 -- | \( O(n \log n) \). 'unstableSortOn' sorts the specified 'Seq' by
 -- comparing the results of a key function applied to each element.
@@ -187,7 +187,7 @@ unstableSortOn f (Seq xs) =
 -- | A simple pairing heap.
 data Queue e = Q !e (QList e)
 data QList e
-    = Nil
+    = Nil ()
     | QCons {-# UNPACK #-} !(Queue e)
             (QList e)
 
@@ -292,10 +292,10 @@ mergeITQ cmp q1@(ITQ i1 x1 y1 ts1) q2@(ITQ i2 x2 y2 ts2) =
 popMinQ :: (e -> e -> Ordering) -> Queue e -> (Queue e, e)
 popMinQ cmp (Q x xs) = (mergeQs xs, x)
   where
-    mergeQs (t `QCons` Nil) = t
-    mergeQs (t1 `QCons` t2 `QCons` Nil) = t1 <+> t2
+    mergeQs (t `QCons` (Nil ())) = t
+    mergeQs (t1 `QCons` t2 `QCons` (Nil ())) = t1 <+> t2
     mergeQs (t1 `QCons` t2 `QCons` ts) = (t1 <+> t2) <+> mergeQs ts
-    mergeQs Nil = error "popMinQ: tried to pop from empty queue"
+    mergeQs (Nil ()) = error "popMinQ: tried to pop from empty queue"
     (<+>) = mergeQ cmp
 
 -- | Pop the smallest element from the queue, using the supplied

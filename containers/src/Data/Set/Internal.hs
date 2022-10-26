@@ -323,7 +323,7 @@ instance Ord a => Semigroup (Set a) where
 -- | Folds in order of increasing key.
 instance Foldable.Foldable Set where
     fold = go
-      where go Tip = mempty
+      where go (Tip ()) = mempty
             go (Bin 1 k _ _) = k
             go (Bin _ k l r) = go l `mappend` (k `mappend` go r)
     {-# INLINABLE fold #-}
@@ -332,7 +332,7 @@ instance Foldable.Foldable Set where
     foldl = foldl
     {-# INLINE foldl #-}
     foldMap f t = go t
-      where go Tip = mempty
+      where go (Tip ()) = mempty
             go (Bin 1 k _ _) = f k
             go (Bin _ k l r) = go l `mappend` (f k `mappend` go r)
     {-# INLINE foldMap #-}
@@ -348,7 +348,7 @@ instance Foldable.Foldable Set where
     toList = toList
     {-# INLINE toList #-}
     elem = go
-      where go !_ Tip = False
+      where go !_ (Tip ()) = False
             go x (Bin _ y l r) = x == y || go x l || go x r
     {-# INLINABLE elem #-}
     minimum = findMin
@@ -393,13 +393,13 @@ setDataType = mkDataType "Data.Set.Internal.Set" [fromListConstr]
 --------------------------------------------------------------------}
 -- | /O(1)/. Is this the empty set?
 null :: Set a -> Bool
-null Tip      = True
+null (Tip ())      = True
 null (Bin {}) = False
 {-# INLINE null #-}
 
 -- | /O(1)/. The number of elements in the set.
 size :: Set a -> Int
-size Tip = 0
+size (Tip ()) = 0
 size (Bin sz _ _ _) = sz
 {-# INLINE size #-}
 
@@ -407,7 +407,7 @@ size (Bin sz _ _ _) = sz
 member :: Ord a => a -> Set a -> Bool
 member = go
   where
-    go !_ Tip = False
+    go !_ (Tip ()) = False
     go x (Bin _ y l r) = case compare x y of
       LT -> go x l
       GT -> go x r
@@ -434,11 +434,11 @@ notMember a t = not $ member a t
 lookupLT :: Ord a => a -> Set a -> Maybe a
 lookupLT = goNothing
   where
-    goNothing !_ Tip = Nothing
+    goNothing !_ (Tip ()) = Nothing
     goNothing x (Bin _ y l r) | x <= y = goNothing x l
                               | otherwise = goJust x y r
 
-    goJust !_ best Tip = Just best
+    goJust !_ best (Tip ()) = Just best
     goJust x best (Bin _ y l r) | x <= y = goJust x best l
                                 | otherwise = goJust x y r
 #if __GLASGOW_HASKELL__
@@ -454,11 +454,11 @@ lookupLT = goNothing
 lookupGT :: Ord a => a -> Set a -> Maybe a
 lookupGT = goNothing
   where
-    goNothing !_ Tip = Nothing
+    goNothing !_ (Tip ()) = Nothing
     goNothing x (Bin _ y l r) | x < y = goJust x y l
                               | otherwise = goNothing x r
 
-    goJust !_ best Tip = Just best
+    goJust !_ best (Tip ()) = Just best
     goJust x best (Bin _ y l r) | x < y = goJust x y l
                                 | otherwise = goJust x best r
 #if __GLASGOW_HASKELL__
@@ -475,12 +475,12 @@ lookupGT = goNothing
 lookupLE :: Ord a => a -> Set a -> Maybe a
 lookupLE = goNothing
   where
-    goNothing !_ Tip = Nothing
+    goNothing !_ (Tip ()) = Nothing
     goNothing x (Bin _ y l r) = case compare x y of LT -> goNothing x l
                                                     EQ -> Just y
                                                     GT -> goJust x y r
 
-    goJust !_ best Tip = Just best
+    goJust !_ best (Tip ()) = Just best
     goJust x best (Bin _ y l r) = case compare x y of LT -> goJust x best l
                                                       EQ -> Just y
                                                       GT -> goJust x y r
@@ -498,12 +498,12 @@ lookupLE = goNothing
 lookupGE :: Ord a => a -> Set a -> Maybe a
 lookupGE = goNothing
   where
-    goNothing !_ Tip = Nothing
+    goNothing !_ (Tip ()) = Nothing
     goNothing x (Bin _ y l r) = case compare x y of LT -> goJust x y l
                                                     EQ -> Just y
                                                     GT -> goNothing x r
 
-    goJust !_ best Tip = Just best
+    goJust !_ best (Tip ()) = Just best
     goJust x best (Bin _ y l r) = case compare x y of LT -> goJust x y l
                                                       EQ -> Just y
                                                       GT -> goJust x best r
@@ -518,12 +518,12 @@ lookupGE = goNothing
 --------------------------------------------------------------------}
 -- | /O(1)/. The empty set.
 empty  :: Set a
-empty = Tip
+empty = Tip ()
 {-# INLINE empty #-}
 
 -- | /O(1)/. Create a singleton set.
 singleton :: a -> Set a
-singleton x = Bin 1 x Tip Tip
+singleton x = Bin 1 x (Tip ()) (Tip ())
 {-# INLINE singleton #-}
 
 {--------------------------------------------------------------------
@@ -539,7 +539,7 @@ insert :: Ord a => a -> Set a -> Set a
 insert x0 = go x0 x0
   where
     go :: Ord a => a -> a -> Set a -> Set a
-    go orig !_ Tip = singleton (lazy orig)
+    go orig !_ (Tip ()) = singleton (lazy orig)
     go orig !x t@(Bin sz y l r) = case compare x y of
         LT | l' `ptrEq` l -> t
            | otherwise -> balanceL y l' r
@@ -569,7 +569,7 @@ insertR :: Ord a => a -> Set a -> Set a
 insertR x0 = go x0 x0
   where
     go :: Ord a => a -> a -> Set a -> Set a
-    go orig !_ Tip = singleton (lazy orig)
+    go orig !_ (Tip ()) = singleton (lazy orig)
     go orig !x t@(Bin _ y l r) = case compare x y of
         LT | l' `ptrEq` l -> t
            | otherwise -> balanceL y l' r
@@ -591,7 +591,7 @@ delete :: Ord a => a -> Set a -> Set a
 delete = go
   where
     go :: Ord a => a -> Set a -> Set a
-    go !_ Tip = Tip
+    go !_ (Tip ()) = Tip ()
     go x t@(Bin _ y l r) = case compare x y of
         LT | l' `ptrEq` l -> t
            | otherwise -> balanceR y l' r
@@ -657,7 +657,7 @@ alteredSet :: Ord a => a -> Set a -> AlteredSet a
 alteredSet x0 s0 = go x0 s0
   where
     go :: Ord a => a -> Set a -> AlteredSet a
-    go x Tip           = Inserted (singleton x)
+    go x (Tip ())           = Inserted (singleton x)
     go x (Bin _ y l r) = case compare x y of
         LT -> case go x l of
             Deleted d           -> Deleted (balanceR y d r)
@@ -715,8 +715,8 @@ isSubsetOf t1 t2
 -- only have to worry about split work here, which is the same as in
 -- those functions.
 isSubsetOfX :: Ord a => Set a -> Set a -> Bool
-isSubsetOfX Tip _ = True
-isSubsetOfX _ Tip = False
+isSubsetOfX (Tip ()) _ = True
+isSubsetOfX _ (Tip ()) = False
 -- Skip the final split when we hit a singleton.
 isSubsetOfX (Bin 1 x _ _) t = member x t
 isSubsetOfX (Bin _ x l r) t
@@ -760,8 +760,8 @@ isSubsetOfX (Bin _ x l r) t
 -- @since 0.5.11
 
 disjoint :: Ord a => Set a -> Set a -> Bool
-disjoint Tip _ = True
-disjoint _ Tip = True
+disjoint (Tip ()) _ = True
+disjoint _ (Tip ()) = True
 -- Avoid a split for the singleton case.
 disjoint (Bin 1 x _ _) t = x `notMember` t
 disjoint (Bin _ x l r) t
@@ -779,7 +779,7 @@ disjoint (Bin _ x l r) t
 -- unfortunate if, for example, someone uses findMin or findMax.
 
 lookupMinSure :: a -> Set a -> a
-lookupMinSure x Tip = x
+lookupMinSure x (Tip ()) = x
 lookupMinSure _ (Bin _ x l _) = lookupMinSure x l
 
 -- | /O(log n)/. The minimal element of a set.
@@ -787,7 +787,7 @@ lookupMinSure _ (Bin _ x l _) = lookupMinSure x l
 -- @since 0.5.9
 
 lookupMin :: Set a -> Maybe a
-lookupMin Tip = Nothing
+lookupMin (Tip ()) = Nothing
 lookupMin (Bin _ x l _) = Just $! lookupMinSure x l
 
 -- | /O(log n)/. The minimal element of a set.
@@ -797,7 +797,7 @@ findMin t
   | otherwise = error "Set.findMin: empty set has no minimal element"
 
 lookupMaxSure :: a -> Set a -> a
-lookupMaxSure x Tip = x
+lookupMaxSure x (Tip ()) = x
 lookupMaxSure _ (Bin _ x _ r) = lookupMaxSure x r
 
 -- | /O(log n)/. The maximal element of a set.
@@ -805,7 +805,7 @@ lookupMaxSure _ (Bin _ x _ r) = lookupMaxSure x r
 -- @since 0.5.9
 
 lookupMax :: Set a -> Maybe a
-lookupMax Tip = Nothing
+lookupMax (Tip ()) = Nothing
 lookupMax (Bin _ x _ r) = Just $! lookupMaxSure x r
 
 -- | /O(log n)/. The maximal element of a set.
@@ -816,15 +816,15 @@ findMax t
 
 -- | /O(log n)/. Delete the minimal element. Returns an empty set if the set is empty.
 deleteMin :: Set a -> Set a
-deleteMin (Bin _ _ Tip r) = r
+deleteMin (Bin _ _ (Tip ()) r) = r
 deleteMin (Bin _ x l r)   = balanceR x (deleteMin l) r
-deleteMin Tip             = Tip
+deleteMin (Tip ())             = Tip ()
 
 -- | /O(log n)/. Delete the maximal element. Returns an empty set if the set is empty.
 deleteMax :: Set a -> Set a
-deleteMax (Bin _ _ l Tip) = l
+deleteMax (Bin _ _ l (Tip ())) = l
 deleteMax (Bin _ x l r)   = balanceL x l (deleteMax r)
-deleteMax Tip             = Tip
+deleteMax (Tip ())             = Tip ()
 
 {--------------------------------------------------------------------
   Union.
@@ -839,10 +839,10 @@ unions = Foldable.foldl' union empty
 -- | /O(m*log(n\/m + 1)), m <= n/. The union of two sets, preferring the first set when
 -- equal elements are encountered.
 union :: Ord a => Set a -> Set a -> Set a
-union t1 Tip  = t1
+union t1 (Tip ())  = t1
 union t1 (Bin 1 x _ _) = insertR x t1
 union (Bin 1 x _ _) t2 = insert x t2
-union Tip t2  = t2
+union (Tip ()) t2  = t2
 union t1@(Bin _ x l1 r1) t2 = case splitS x t2 of
   (l2 :*: r2)
     | l1l2 `ptrEq` l1 && r1r2 `ptrEq` r1 -> t1
@@ -862,8 +862,8 @@ union t1@(Bin _ x l1 r1) t2 = case splitS x t2 of
 --
 -- > difference (fromList [5, 3]) (fromList [5, 7]) == singleton 3
 difference :: Ord a => Set a -> Set a -> Set a
-difference Tip _   = Tip
-difference t1 Tip  = t1
+difference (Tip ()) _   = Tip ()
+difference t1 (Tip ())  = t1
 difference t1 (Bin _ x l2 r2) = case split x t1 of
    (l1, r1)
      | size l1l2 + size r1r2 == size t1 -> t1
@@ -889,8 +889,8 @@ difference t1 (Bin _ x l2 r2) = case split x t1 of
 --
 -- prints @(fromList [A],fromList [B])@.
 intersection :: Ord a => Set a -> Set a -> Set a
-intersection Tip _ = Tip
-intersection _ Tip = Tip
+intersection (Tip ()) _ = Tip ()
+intersection _ (Tip ()) = Tip ()
 intersection t1@(Bin _ x l1 r1) t2
   | b = if l1l2 `ptrEq` l1 && r1r2 `ptrEq` r1
         then t1
@@ -909,7 +909,7 @@ intersection t1@(Bin _ x l1 r1) t2
 --------------------------------------------------------------------}
 -- | /O(n)/. Filter all elements that satisfy the predicate.
 filter :: (a -> Bool) -> Set a -> Set a
-filter _ Tip = Tip
+filter _ (Tip ()) = Tip ()
 filter p t@(Bin _ x l r)
     | p x = if l `ptrEq` l' && r `ptrEq` r'
             then t
@@ -925,7 +925,7 @@ filter p t@(Bin _ x l r)
 partition :: (a -> Bool) -> Set a -> (Set a,Set a)
 partition p0 t0 = toPair $ go p0 t0
   where
-    go _ Tip = (Tip :*: Tip)
+    go _ (Tip ()) = ((Tip ()) :*: (Tip ()))
     go p t@(Bin _ x l r) = case (go p l, go p r) of
       ((l1 :*: l2), (r1 :*: r2))
         | p x       -> (if l1 `ptrEq` l && r1 `ptrEq` r
@@ -963,7 +963,7 @@ map f = fromList . List.map f . toList
 -- >     where ls = toList s
 
 mapMonotonic :: (a->b) -> Set a -> Set b
-mapMonotonic _ Tip = Tip
+mapMonotonic _ (Tip ()) = Tip ()
 mapMonotonic f (Bin sz x l r) = Bin sz (f x) (mapMonotonic f l) (mapMonotonic f r)
 
 {--------------------------------------------------------------------
@@ -987,7 +987,7 @@ fold = foldr
 foldr :: (a -> b -> b) -> b -> Set a -> b
 foldr f z = go z
   where
-    go z' Tip           = z'
+    go z' (Tip ())           = z'
     go z' (Bin _ x l r) = go (f x (go z' r)) l
 {-# INLINE foldr #-}
 
@@ -997,7 +997,7 @@ foldr f z = go z
 foldr' :: (a -> b -> b) -> b -> Set a -> b
 foldr' f z = go z
   where
-    go !z' Tip           = z'
+    go !z' (Tip ())           = z'
     go z' (Bin _ x l r) = go (f x $! go z' r) l
 {-# INLINE foldr' #-}
 
@@ -1010,7 +1010,7 @@ foldr' f z = go z
 foldl :: (a -> b -> a) -> a -> Set b -> a
 foldl f z = go z
   where
-    go z' Tip           = z'
+    go z' (Tip ())           = z'
     go z' (Bin _ x l r) = go (f (go z' l) x) r
 {-# INLINE foldl #-}
 
@@ -1020,7 +1020,7 @@ foldl f z = go z
 foldl' :: (a -> b -> a) -> a -> Set b -> a
 foldl' f z = go z
   where
-    go !z' Tip           = z'
+    go !z' (Tip ())           = z'
     go z' (Bin _ x l r) =
       let !z'' = go z' l
       in go (f z'' x) r
@@ -1095,10 +1095,10 @@ foldlFB = foldl
 -- For some reason, when 'singleton' is used in fromList or in
 -- create, it is not inlined, so we inline it manually.
 fromList :: Ord a => [a] -> Set a
-fromList [] = Tip
-fromList [x] = Bin 1 x Tip Tip
-fromList (x0 : xs0) | not_ordered x0 xs0 = fromList' (Bin 1 x0 Tip Tip) xs0
-                    | otherwise = go (1::Int) (Bin 1 x0 Tip Tip) xs0
+fromList [] = Tip ()
+fromList [x] = Bin 1 x (Tip ()) (Tip ())
+fromList (x0 : xs0) | not_ordered x0 xs0 = fromList' (Bin 1 x0 (Tip ()) (Tip ())) xs0
+                    | otherwise = go (1::Int) (Bin 1 x0 (Tip ()) (Tip ())) xs0
   where
     not_ordered _ [] = False
     not_ordered x (y : _) = x >= y
@@ -1119,10 +1119,10 @@ fromList (x0 : xs0) | not_ordered x0 xs0 = fromList' (Bin 1 x0 Tip Tip) xs0
     -- If ys is nonempty, the keys in ys are not ordered with respect to tree
     -- and must be inserted using fromList'. Otherwise the keys have been
     -- ordered so far.
-    create !_ [] = (Tip, [], [])
+    create !_ [] = ((Tip ()), [], [])
     create s xs@(x : xss)
-      | s == 1 = if not_ordered x xss then (Bin 1 x Tip Tip, [], xss)
-                                      else (Bin 1 x Tip Tip, xss, [])
+      | s == 1 = if not_ordered x xss then (Bin 1 x (Tip ()) (Tip ()), [], xss)
+                                      else (Bin 1 x (Tip ()) (Tip ()), xss, [])
       | otherwise = case create (s `shiftR` 1) xs of
                       res@(_, [], _) -> res
                       (l, [y], zs) -> (insertMax y l, [], zs)
@@ -1177,17 +1177,17 @@ combineEq (x : xs) = combineEq' x xs
 -- For some reason, when 'singleton' is used in fromDistinctAscList or in
 -- create, it is not inlined, so we inline it manually.
 fromDistinctAscList :: [a] -> Set a
-fromDistinctAscList [] = Tip
-fromDistinctAscList (x0 : xs0) = go (1::Int) (Bin 1 x0 Tip Tip) xs0
+fromDistinctAscList [] = Tip ()
+fromDistinctAscList (x0 : xs0) = go (1::Int) (Bin 1 x0 (Tip ()) (Tip ())) xs0
   where
     go !_ t [] = t
     go s l (x : xs) = case create s xs of
                         (r :*: ys) -> let !t' = link x l r
                                       in go (s `shiftL` 1) t' ys
 
-    create !_ [] = (Tip :*: [])
+    create !_ [] = ((Tip ()) :*: [])
     create s xs@(x : xs')
-      | s == 1 = (Bin 1 x Tip Tip :*: xs')
+      | s == 1 = (Bin 1 x (Tip ()) (Tip ()) :*: xs')
       | otherwise = case create (s `shiftR` 1) xs of
                       res@(_ :*: []) -> res
                       (l :*: (y:ys)) -> case create (s `shiftR` 1) ys of
@@ -1201,17 +1201,17 @@ fromDistinctAscList (x0 : xs0) = go (1::Int) (Bin 1 x0 Tip Tip) xs0
 --
 -- @since 0.5.8
 fromDistinctDescList :: [a] -> Set a
-fromDistinctDescList [] = Tip
-fromDistinctDescList (x0 : xs0) = go (1::Int) (Bin 1 x0 Tip Tip) xs0
+fromDistinctDescList [] = Tip ()
+fromDistinctDescList (x0 : xs0) = go (1::Int) (Bin 1 x0 (Tip ()) (Tip ())) xs0
   where
     go !_ t [] = t
     go s r (x : xs) = case create s xs of
                         (l :*: ys) -> let !t' = link x l r
                                       in go (s `shiftL` 1) t' ys
 
-    create !_ [] = (Tip :*: [])
+    create !_ [] = ((Tip ()) :*: [])
     create s xs@(x : xs')
-      | s == 1 = (Bin 1 x Tip Tip :*: xs')
+      | s == 1 = (Bin 1 x (Tip ()) (Tip ()) :*: xs')
       | otherwise = case create (s `shiftR` 1) xs of
                       res@(_ :*: []) -> res
                       (r :*: (y:ys)) -> case create (s `shiftR` 1) ys of
@@ -1285,7 +1285,7 @@ INSTANCE_TYPEABLE1(Set)
 --------------------------------------------------------------------}
 
 instance NFData a => NFData (Set a) where
-    rnf Tip           = ()
+    rnf (Tip ())           = ()
     rnf (Bin _ y l r) = rnf y `seq` rnf l `seq` rnf r
 
 {--------------------------------------------------------------------
@@ -1299,7 +1299,7 @@ split x t = toPair $ splitS x t
 {-# INLINABLE split #-}
 
 splitS :: Ord a => a -> Set a -> StrictPair (Set a) (Set a)
-splitS _ Tip = (Tip :*: Tip)
+splitS _ (Tip ()) = ((Tip ()) :*: (Tip ()))
 splitS x (Bin _ y l r)
       = case compare x y of
           LT -> let (lt :*: gt) = splitS x l in (lt :*: link y gt r)
@@ -1310,7 +1310,7 @@ splitS x (Bin _ y l r)
 -- | /O(log n)/. Performs a 'split' but also returns whether the pivot
 -- element was found in the original set.
 splitMember :: Ord a => a -> Set a -> (Set a,Bool,Set a)
-splitMember _ Tip = (Tip, False, Tip)
+splitMember _ (Tip ()) = ((Tip ()), False, (Tip ()))
 splitMember x (Bin _ y l r)
    = case compare x y of
        LT -> let (lt, found, gt) = splitMember x l
@@ -1345,7 +1345,7 @@ findIndex :: Ord a => a -> Set a -> Int
 findIndex = go 0
   where
     go :: Ord a => Int -> a -> Set a -> Int
-    go !_ !_ Tip  = error "Set.findIndex: element is not in the set"
+    go !_ !_ (Tip ())  = error "Set.findIndex: element is not in the set"
     go idx x (Bin _ kx l r) = case compare x kx of
       LT -> go idx x l
       GT -> go (idx + size l + 1) x r
@@ -1370,7 +1370,7 @@ lookupIndex :: Ord a => a -> Set a -> Maybe Int
 lookupIndex = go 0
   where
     go :: Ord a => Int -> a -> Set a -> Maybe Int
-    go !_ !_ Tip  = Nothing
+    go !_ !_ (Tip ())  = Nothing
     go idx x (Bin _ kx l r) = case compare x kx of
       LT -> go idx x l
       GT -> go (idx + size l + 1) x r
@@ -1390,7 +1390,7 @@ lookupIndex = go 0
 -- @since 0.5.4
 
 elemAt :: Int -> Set a -> a
-elemAt !_ Tip = error "Set.elemAt: index out of range"
+elemAt !_ (Tip ()) = error "Set.elemAt: index out of range"
 elemAt i (Bin _ x l r)
   = case compare i sizeL of
       LT -> elemAt i l
@@ -1413,7 +1413,7 @@ elemAt i (Bin _ x l r)
 deleteAt :: Int -> Set a -> Set a
 deleteAt !i t =
   case t of
-    Tip -> error "Set.deleteAt: index out of range"
+    (Tip ()) -> error "Set.deleteAt: index out of range"
     Bin _ x l r -> case compare i sizeL of
       LT -> balanceR x (deleteAt i l) r
       GT -> balanceL x l (deleteAt (i-sizeL-1) r)
@@ -1433,8 +1433,8 @@ take :: Int -> Set a -> Set a
 take i m | i >= size m = m
 take i0 m0 = go i0 m0
   where
-    go i !_ | i <= 0 = Tip
-    go !_ Tip = Tip
+    go i !_ | i <= 0 = Tip ()
+    go !_ (Tip ()) = Tip ()
     go i (Bin _ x l r) =
       case compare i sizeL of
         LT -> go i l
@@ -1451,11 +1451,11 @@ take i0 m0 = go i0 m0
 --
 -- @since 0.5.8
 drop :: Int -> Set a -> Set a
-drop i m | i >= size m = Tip
+drop i m | i >= size m = Tip ()
 drop i0 m0 = go i0 m0
   where
     go i m | i <= 0 = m
-    go !_ Tip = Tip
+    go !_ (Tip ()) = Tip ()
     go i (Bin _ x l r) =
       case compare i sizeL of
         LT -> link x (go i l) r
@@ -1470,11 +1470,11 @@ drop i0 m0 = go i0 m0
 -- @
 splitAt :: Int -> Set a -> (Set a, Set a)
 splitAt i0 m0
-  | i0 >= size m0 = (m0, Tip)
+  | i0 >= size m0 = (m0, (Tip ()))
   | otherwise = toPair $ go i0 m0
   where
-    go i m | i <= 0 = Tip :*: m
-    go !_ Tip = Tip :*: Tip
+    go i m | i <= 0 = Tip () :*: m
+    go !_ (Tip ()) = Tip () :*: (Tip ())
     go i (Bin _ x l r)
       = case compare i sizeL of
           LT -> case go i l of
@@ -1496,7 +1496,7 @@ splitAt i0 m0
 -- @since 0.5.8
 
 takeWhileAntitone :: (a -> Bool) -> Set a -> Set a
-takeWhileAntitone _ Tip = Tip
+takeWhileAntitone _ (Tip ()) = Tip ()
 takeWhileAntitone p (Bin _ x l r)
   | p x = link x l (takeWhileAntitone p r)
   | otherwise = takeWhileAntitone p l
@@ -1513,7 +1513,7 @@ takeWhileAntitone p (Bin _ x l r)
 -- @since 0.5.8
 
 dropWhileAntitone :: (a -> Bool) -> Set a -> Set a
-dropWhileAntitone _ Tip = Tip
+dropWhileAntitone _ (Tip ()) = Tip ()
 dropWhileAntitone p (Bin _ x l r)
   | p x = dropWhileAntitone p r
   | otherwise = link x (dropWhileAntitone p l) r
@@ -1537,7 +1537,7 @@ dropWhileAntitone p (Bin _ x l r)
 spanAntitone :: (a -> Bool) -> Set a -> (Set a, Set a)
 spanAntitone p0 m = toPair (go p0 m)
   where
-    go _ Tip = Tip :*: Tip
+    go _ (Tip ()) = Tip () :*: (Tip ())
     go p (Bin _ x l r)
       | p x = let u :*: v = go p r in link x l u :*: v
       | otherwise = let u :*: v = go p l in u :*: link x v r
@@ -1569,8 +1569,8 @@ spanAntitone p0 m = toPair (go p0 m)
   Link
 --------------------------------------------------------------------}
 link :: a -> Set a -> Set a -> Set a
-link x Tip r  = insertMin x r
-link x l Tip  = insertMax x l
+link x (Tip ()) r  = insertMin x r
+link x l (Tip ())  = insertMax x l
 link x l@(Bin sizeL y ly ry) r@(Bin sizeR z lz rz)
   | delta*sizeL < sizeR  = balanceL z (link x l lz) rz
   | delta*sizeR < sizeL  = balanceR y ly (link x ry r)
@@ -1581,13 +1581,13 @@ link x l@(Bin sizeL y ly ry) r@(Bin sizeR z lz rz)
 insertMax,insertMin :: a -> Set a -> Set a
 insertMax x t
   = case t of
-      Tip -> singleton x
+      (Tip ()) -> singleton x
       Bin _ y l r
           -> balanceR y l (insertMax x r)
 
 insertMin x t
   = case t of
-      Tip -> singleton x
+      (Tip ()) -> singleton x
       Bin _ y l r
           -> balanceL y (insertMin x l) r
 
@@ -1595,8 +1595,8 @@ insertMin x t
   [merge l r]: merges two trees.
 --------------------------------------------------------------------}
 merge :: Set a -> Set a -> Set a
-merge Tip r   = r
-merge l Tip   = l
+merge (Tip ()) r   = r
+merge l (Tip ())   = l
 merge l@(Bin sizeL x lx rx) r@(Bin sizeR y ly ry)
   | delta*sizeL < sizeR = balanceL y (merge l ly) ry
   | delta*sizeR < sizeL = balanceR x lx (merge rx r)
@@ -1607,8 +1607,8 @@ merge l@(Bin sizeL x lx rx) r@(Bin sizeR y ly ry)
   Assumes that [l] and [r] are already balanced with respect to each other.
 --------------------------------------------------------------------}
 glue :: Set a -> Set a -> Set a
-glue Tip r = r
-glue l Tip = l
+glue (Tip ()) r = r
+glue l (Tip ()) = l
 glue l@(Bin sl xl ll lr) r@(Bin sr xr rl rr)
   | sl > sr = let !(m :*: l') = maxViewSure xl ll lr in balanceR m l' r
   | otherwise = let !(m :*: r') = minViewSure xr rl rr in balanceL m l r'
@@ -1620,7 +1620,7 @@ glue l@(Bin sl xl ll lr) r@(Bin sr xr rl rr)
 deleteFindMin :: Set a -> (a,Set a)
 deleteFindMin t
   | Just r <- minView t = r
-  | otherwise = (error "Set.deleteFindMin: can not return the minimal element of an empty set", Tip)
+  | otherwise = (error "Set.deleteFindMin: can not return the minimal element of an empty set", (Tip ()))
 
 -- | /O(log n)/. Delete and find the maximal element.
 --
@@ -1628,12 +1628,12 @@ deleteFindMin t
 deleteFindMax :: Set a -> (a,Set a)
 deleteFindMax t
   | Just r <- maxView t = r
-  | otherwise = (error "Set.deleteFindMax: can not return the maximal element of an empty set", Tip)
+  | otherwise = (error "Set.deleteFindMax: can not return the maximal element of an empty set", (Tip ()))
 
 minViewSure :: a -> Set a -> Set a -> StrictPair a (Set a)
 minViewSure = go
   where
-    go x Tip r = x :*: r
+    go x (Tip ()) r = x :*: r
     go x (Bin _ xl ll lr) r =
       case go xl ll lr of
         xm :*: l' -> xm :*: balanceR x l' r
@@ -1641,13 +1641,13 @@ minViewSure = go
 -- | /O(log n)/. Retrieves the minimal key of the set, and the set
 -- stripped of that element, or 'Nothing' if passed an empty set.
 minView :: Set a -> Maybe (a, Set a)
-minView Tip = Nothing
+minView (Tip ()) = Nothing
 minView (Bin _ x l r) = Just $! toPair $ minViewSure x l r
 
 maxViewSure :: a -> Set a -> Set a -> StrictPair a (Set a)
 maxViewSure = go
   where
-    go x l Tip = x :*: l
+    go x l (Tip ()) = x :*: l
     go x l (Bin _ xr rl rr) =
       case go xr rl rr of
         xm :*: r' -> xm :*: balanceL x l r'
@@ -1655,7 +1655,7 @@ maxViewSure = go
 -- | /O(log n)/. Retrieves the maximal key of the set, and the set
 -- stripped of that element, or 'Nothing' if passed an empty set.
 maxView :: Set a -> Maybe (a, Set a)
-maxView Tip = Nothing
+maxView (Tip ()) = Nothing
 maxView (Bin _ x l r) = Just $! toPair $ maxViewSure x l r
 
 {--------------------------------------------------------------------
@@ -1736,17 +1736,17 @@ ratio = 2
 -- right subtree might have been deleted from.
 balanceL :: a -> Set a -> Set a -> Set a
 balanceL x l r = case r of
-  Tip -> case l of
-           Tip -> Bin 1 x Tip Tip
-           (Bin _ _ Tip Tip) -> Bin 2 x l Tip
-           (Bin _ lx Tip (Bin _ lrx _ _)) -> Bin 3 lrx (Bin 1 lx Tip Tip) (Bin 1 x Tip Tip)
-           (Bin _ lx ll@(Bin _ _ _ _) Tip) -> Bin 3 lx ll (Bin 1 x Tip Tip)
+  (Tip ()) -> case l of
+           (Tip ()) -> Bin 1 x (Tip ()) (Tip ())
+           (Bin _ _ (Tip ()) (Tip ())) -> Bin 2 x l (Tip ())
+           (Bin _ lx (Tip ()) (Bin _ lrx _ _)) -> Bin 3 lrx (Bin 1 lx (Tip ()) (Tip ())) (Bin 1 x (Tip ()) (Tip ()))
+           (Bin _ lx ll@(Bin _ _ _ _) (Tip ())) -> Bin 3 lx ll (Bin 1 x (Tip ()) (Tip ()))
            (Bin ls lx ll@(Bin lls _ _ _) lr@(Bin lrs lrx lrl lrr))
-             | lrs < ratio*lls -> Bin (1+ls) lx ll (Bin (1+lrs) x lr Tip)
-             | otherwise -> Bin (1+ls) lrx (Bin (1+lls+size lrl) lx ll lrl) (Bin (1+size lrr) x lrr Tip)
+             | lrs < ratio*lls -> Bin (1+ls) lx ll (Bin (1+lrs) x lr (Tip ()))
+             | otherwise -> Bin (1+ls) lrx (Bin (1+lls+size lrl) lx ll lrl) (Bin (1+size lrr) x lrr (Tip ()))
 
   (Bin rs _ _ _) -> case l of
-           Tip -> Bin (1+rs) x Tip r
+           (Tip ()) -> Bin (1+rs) x (Tip ()) r
 
            (Bin ls lx ll lr)
               | ls > delta*rs  -> case (ll, lr) of
@@ -1761,17 +1761,17 @@ balanceL x l r = case r of
 -- left subtree might have been deleted from.
 balanceR :: a -> Set a -> Set a -> Set a
 balanceR x l r = case l of
-  Tip -> case r of
-           Tip -> Bin 1 x Tip Tip
-           (Bin _ _ Tip Tip) -> Bin 2 x Tip r
-           (Bin _ rx Tip rr@(Bin _ _ _ _)) -> Bin 3 rx (Bin 1 x Tip Tip) rr
-           (Bin _ rx (Bin _ rlx _ _) Tip) -> Bin 3 rlx (Bin 1 x Tip Tip) (Bin 1 rx Tip Tip)
+  (Tip ()) -> case r of
+           (Tip ()) -> Bin 1 x (Tip ()) (Tip ())
+           (Bin _ _ (Tip ()) (Tip ())) -> Bin 2 x (Tip ()) r
+           (Bin _ rx (Tip ()) rr@(Bin _ _ _ _)) -> Bin 3 rx (Bin 1 x (Tip ()) (Tip ())) rr
+           (Bin _ rx (Bin _ rlx _ _) (Tip ())) -> Bin 3 rlx (Bin 1 x (Tip ()) (Tip ())) (Bin 1 rx (Tip ()) (Tip ()))
            (Bin rs rx rl@(Bin rls rlx rll rlr) rr@(Bin rrs _ _ _))
-             | rls < ratio*rrs -> Bin (1+rs) rx (Bin (1+rls) x Tip rl) rr
-             | otherwise -> Bin (1+rs) rlx (Bin (1+size rll) x Tip rll) (Bin (1+rrs+size rlr) rx rlr rr)
+             | rls < ratio*rrs -> Bin (1+rs) rx (Bin (1+rls) x (Tip ()) rl) rr
+             | otherwise -> Bin (1+rs) rlx (Bin (1+size rll) x (Tip ()) rll) (Bin (1+rrs+size rlr) rx rlr rr)
 
   (Bin ls _ _ _) -> case r of
-           Tip -> Bin (1+ls) x l Tip
+           (Tip ()) -> Bin (1+ls) x l (Tip ())
 
            (Bin rs rx rl rr)
               | rs > delta*ls  -> case (rl, rr) of
@@ -1818,7 +1818,7 @@ bin x l r
 splitRoot :: Set a -> [Set a]
 splitRoot orig =
   case orig of
-    Tip           -> []
+    (Tip ())           -> []
     Bin _ v l r -> [l, singleton v, r]
 {-# INLINE splitRoot #-}
 
@@ -1838,7 +1838,7 @@ splitRoot orig =
 --
 -- @since 0.5.11
 powerSet :: Set a -> Set (Set a)
-powerSet xs0 = insertMin empty (foldr' step Tip xs0) where
+powerSet xs0 = insertMin empty (foldr' step (Tip ()) xs0) where
   step x pxs = insertMin (singleton x) (insertMin x `mapMonotonic` pxs) `glue` pxs
 
 -- | /O(m*n)/ (conjectured). Calculate the Cartesian product of two sets.
@@ -1862,7 +1862,7 @@ cartesianProduct :: Set a -> Set b -> Set (a, b)
 --
 -- We could definitely get big-O optimal (O(m * n)) in a rather simple way:
 --
---   cartesianProduct _as Tip = Tip
+--   cartesianProduct _as (Tip ()) = Tip ()
 --   cartesianProduct as bs = fromDistinctAscList
 --     [(a,b) | a <- toList as, b <- toList bs]
 --
@@ -1874,7 +1874,7 @@ cartesianProduct :: Set a -> Set b -> Set (a, b)
 
 -- When the second argument has at most one element, we can be a little
 -- clever.
-cartesianProduct !_as Tip = Tip
+cartesianProduct !_as (Tip ()) = Tip ()
 cartesianProduct as (Bin 1 b _ _) = mapMonotonic (flip (,) b) as
 cartesianProduct as bs =
   getMergeSet $ foldMap (\a -> MergeSet $ mapMonotonic ((,) a) bs) as
@@ -1967,8 +1967,8 @@ showTreeWith hang wide t
 showsTree :: Show a => Bool -> [String] -> [String] -> Set a -> ShowS
 showsTree wide lbars rbars t
   = case t of
-      Tip -> showsBars lbars . showString "|\n"
-      Bin _ x Tip Tip
+      (Tip ()) -> showsBars lbars . showString "|\n"
+      Bin _ x (Tip ()) (Tip ())
           -> showsBars lbars . shows x . showString "\n"
       Bin _ x l r
           -> showsTree wide (withBar rbars) (withEmpty rbars) r .
@@ -1980,8 +1980,8 @@ showsTree wide lbars rbars t
 showsTreeHang :: Show a => Bool -> [String] -> Set a -> ShowS
 showsTreeHang wide bars t
   = case t of
-      Tip -> showsBars bars . showString "|\n"
-      Bin _ x Tip Tip
+      (Tip ()) -> showsBars bars . showString "|\n"
+      Bin _ x (Tip ()) (Tip ())
           -> showsBars bars . shows x . showString "\n"
       Bin _ x l r
           -> showsBars bars . shows x . showString "\n" .
@@ -2022,13 +2022,13 @@ ordered t
   where
     bounded lo hi t'
       = case t' of
-          Tip         -> True
+          (Tip ())         -> True
           Bin _ x l r -> (lo x) && (hi x) && bounded lo (<x) l && bounded (>x) hi r
 
 balanced :: Set a -> Bool
 balanced t
   = case t of
-      Tip         -> True
+      (Tip ())         -> True
       Bin _ _ l r -> (size l + size r <= 1 || (size l <= delta*size r && size r <= delta*size l)) &&
                      balanced l && balanced r
 
@@ -2038,7 +2038,7 @@ validsize t
   where
     realsize t'
       = case t' of
-          Tip          -> Just 0
+          (Tip ())          -> Just 0
           Bin sz _ l r -> case (realsize l,realsize r) of
                             (Just n,Just m)  | n+m+1 == sz  -> Just sz
                             _                -> Nothing

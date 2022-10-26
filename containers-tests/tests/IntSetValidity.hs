@@ -18,17 +18,17 @@ valid t =
   counterexample "markRespected" (maskRespected t) .&&.
   counterexample "tipsValid" (tipsValid t)
 
--- Invariant: Nil is never found as a child of Bin.
+-- Invariant: (Nil ()) is never found as a child of Bin.
 nilNeverChildOfBin :: IntSet -> Bool
 nilNeverChildOfBin t =
   case t of
-    Nil -> True
+    (Nil ()) -> True
     Tip _ _ -> True
     Bin _ _ l r -> noNilInSet l && noNilInSet r
   where
     noNilInSet t' =
       case t' of
-        Nil -> False
+        (Nil ()) -> False
         Tip _ _ -> True
         Bin _ _ l' r' -> noNilInSet l' && noNilInSet r'
 
@@ -37,7 +37,7 @@ nilNeverChildOfBin t =
 maskPowerOfTwo :: IntSet -> Bool
 maskPowerOfTwo t =
   case t of
-    Nil -> True
+    (Nil ()) -> True
     Tip _ _ -> True
     Bin _ m l r ->
       bitcount 0 (fromIntegral m) == 1 && maskPowerOfTwo l && maskPowerOfTwo r
@@ -47,7 +47,7 @@ maskPowerOfTwo t =
 commonPrefix :: IntSet -> Bool
 commonPrefix t =
   case t of
-    Nil -> True
+    (Nil ()) -> True
     Tip _ _ -> True
     b@(Bin p _ l r) -> all (sharedPrefix p) (elems b) && commonPrefix l && commonPrefix r
   where
@@ -59,7 +59,7 @@ commonPrefix t =
 maskRespected :: IntSet -> Bool
 maskRespected t =
   case t of
-    Nil -> True
+    (Nil ()) -> True
     Tip _ _ -> True
     Bin _ binMask l r ->
       all (\x -> zero x binMask) (elems l) &&
@@ -75,7 +75,7 @@ maskRespected t =
 tipsValid :: IntSet -> Bool
 tipsValid t =
   case t of
-    Nil -> True
+    (Nil ()) -> True
     tip@(Tip p b) -> validTipPrefix p
     Bin _ _ l r -> tipsValid l && tipsValid r
 

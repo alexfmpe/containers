@@ -548,7 +548,7 @@ mapDataType = mkDataType "Data.Map.Internal.Map" [fromListConstr]
 -- > Data.Map.null (singleton 1 'a') == False
 
 null :: Map k a -> Bool
-null Tip      = True
+null (Tip ())      = True
 null (Bin {}) = False
 {-# INLINE null #-}
 
@@ -559,7 +559,7 @@ null (Bin {}) = False
 -- > size (fromList([(1,'a'), (2,'c'), (3,'b')])) == 3
 
 size :: Map k a -> Int
-size Tip              = 0
+size (Tip ())              = 0
 size (Bin sz _ _ _ _) = sz
 {-# INLINE size #-}
 
@@ -595,7 +595,7 @@ size (Bin sz _ _ _ _) = sz
 lookup :: Ord k => k -> Map k a -> Maybe a
 lookup = go
   where
-    go !_ Tip = Nothing
+    go !_ (Tip ()) = Nothing
     go k (Bin _ kx x l r) = case compare k kx of
       LT -> go k l
       GT -> go k r
@@ -613,7 +613,7 @@ lookup = go
 member :: Ord k => k -> Map k a -> Bool
 member = go
   where
-    go !_ Tip = False
+    go !_ (Tip ()) = False
     go k (Bin _ kx _ l r) = case compare k kx of
       LT -> go k l
       GT -> go k r
@@ -642,7 +642,7 @@ notMember k m = not $ member k m
 find :: Ord k => k -> Map k a -> a
 find = go
   where
-    go !_ Tip = error "Map.!: given key is not an element in the map"
+    go !_ (Tip ()) = error "Map.!: given key is not an element in the map"
     go k (Bin _ kx x l r) = case compare k kx of
       LT -> go k l
       GT -> go k r
@@ -662,7 +662,7 @@ find = go
 findWithDefault :: Ord k => a -> k -> Map k a -> a
 findWithDefault = go
   where
-    go def !_ Tip = def
+    go def !_ (Tip ()) = def
     go def k (Bin _ kx x l r) = case compare k kx of
       LT -> go def k l
       GT -> go def k r
@@ -681,11 +681,11 @@ findWithDefault = go
 lookupLT :: Ord k => k -> Map k v -> Maybe (k, v)
 lookupLT = goNothing
   where
-    goNothing !_ Tip = Nothing
+    goNothing !_ (Tip ()) = Nothing
     goNothing k (Bin _ kx x l r) | k <= kx = goNothing k l
                                  | otherwise = goJust k kx x r
 
-    goJust !_ kx' x' Tip = Just (kx', x')
+    goJust !_ kx' x' (Tip ()) = Just (kx', x')
     goJust k kx' x' (Bin _ kx x l r) | k <= kx = goJust k kx' x' l
                                      | otherwise = goJust k kx x r
 #if __GLASGOW_HASKELL__
@@ -702,11 +702,11 @@ lookupLT = goNothing
 lookupGT :: Ord k => k -> Map k v -> Maybe (k, v)
 lookupGT = goNothing
   where
-    goNothing !_ Tip = Nothing
+    goNothing !_ (Tip ()) = Nothing
     goNothing k (Bin _ kx x l r) | k < kx = goJust k kx x l
                                  | otherwise = goNothing k r
 
-    goJust !_ kx' x' Tip = Just (kx', x')
+    goJust !_ kx' x' (Tip ()) = Just (kx', x')
     goJust k kx' x' (Bin _ kx x l r) | k < kx = goJust k kx x l
                                      | otherwise = goJust k kx' x' r
 #if __GLASGOW_HASKELL__
@@ -724,12 +724,12 @@ lookupGT = goNothing
 lookupLE :: Ord k => k -> Map k v -> Maybe (k, v)
 lookupLE = goNothing
   where
-    goNothing !_ Tip = Nothing
+    goNothing !_ (Tip ()) = Nothing
     goNothing k (Bin _ kx x l r) = case compare k kx of LT -> goNothing k l
                                                         EQ -> Just (kx, x)
                                                         GT -> goJust k kx x r
 
-    goJust !_ kx' x' Tip = Just (kx', x')
+    goJust !_ kx' x' (Tip ()) = Just (kx', x')
     goJust k kx' x' (Bin _ kx x l r) = case compare k kx of LT -> goJust k kx' x' l
                                                             EQ -> Just (kx, x)
                                                             GT -> goJust k kx x r
@@ -748,12 +748,12 @@ lookupLE = goNothing
 lookupGE :: Ord k => k -> Map k v -> Maybe (k, v)
 lookupGE = goNothing
   where
-    goNothing !_ Tip = Nothing
+    goNothing !_ (Tip ()) = Nothing
     goNothing k (Bin _ kx x l r) = case compare k kx of LT -> goJust k kx x l
                                                         EQ -> Just (kx, x)
                                                         GT -> goNothing k r
 
-    goJust !_ kx' x' Tip = Just (kx', x')
+    goJust !_ kx' x' (Tip ()) = Just (kx', x')
     goJust k kx' x' (Bin _ kx x l r) = case compare k kx of LT -> goJust k kx x l
                                                             EQ -> Just (kx, x)
                                                             GT -> goJust k kx' x' r
@@ -772,7 +772,7 @@ lookupGE = goNothing
 -- > size empty == 0
 
 empty :: Map k a
-empty = Tip
+empty = Tip ()
 {-# INLINE empty #-}
 
 -- | /O(1)/. A map with a single element.
@@ -781,7 +781,7 @@ empty = Tip
 -- > size (singleton 1 'a') == 1
 
 singleton :: k -> a -> Map k a
-singleton k x = Bin 1 k x Tip Tip
+singleton k x = Bin 1 k x (Tip ()) (Tip ())
 {-# INLINE singleton #-}
 
 {--------------------------------------------------------------------
@@ -806,7 +806,7 @@ insert kx0 = go kx0 kx0
     -- as the present value. We try anyway; this condition
     -- seems particularly likely to occur in 'union'.
     go :: Ord k => k -> k -> a -> Map k a -> Map k a
-    go orig !_  x Tip = singleton (lazy orig) x
+    go orig !_  x (Tip ()) = singleton (lazy orig) x
     go orig !kx x t@(Bin sz ky y l r) =
         case compare kx ky of
             LT | l' `ptrEq` l -> t
@@ -851,7 +851,7 @@ insertR :: Ord k => k -> a -> Map k a -> Map k a
 insertR kx0 = go kx0 kx0
   where
     go :: Ord k => k -> k -> a -> Map k a -> Map k a
-    go orig !_  x Tip = singleton (lazy orig) x
+    go orig !_  x (Tip ()) = singleton (lazy orig) x
     go orig !kx x t@(Bin _ ky y l r) =
         case compare kx ky of
             LT | l' `ptrEq` l -> t
@@ -885,7 +885,7 @@ insertWith = go
     -- either adding a new entry or replacing an element with a
     -- thunk.
     go :: Ord k => (a -> a -> a) -> k -> a -> Map k a -> Map k a
-    go _ !kx x Tip = singleton kx x
+    go _ !kx x (Tip ()) = singleton kx x
     go f !kx x (Bin sy ky y l r) =
         case compare kx ky of
             LT -> balanceL ky y (go f kx x l) r
@@ -907,7 +907,7 @@ insertWithR :: Ord k => (a -> a -> a) -> k -> a -> Map k a -> Map k a
 insertWithR = go
   where
     go :: Ord k => (a -> a -> a) -> k -> a -> Map k a -> Map k a
-    go _ !kx x Tip = singleton kx x
+    go _ !kx x (Tip ()) = singleton kx x
     go f !kx x (Bin sy ky y l r) =
         case compare kx ky of
             LT -> balanceL ky y (go f kx x l) r
@@ -936,7 +936,7 @@ insertWithKey :: Ord k => (k -> a -> a -> a) -> k -> a -> Map k a -> Map k a
 insertWithKey = go
   where
     go :: Ord k => (k -> a -> a -> a) -> k -> a -> Map k a -> Map k a
-    go _ !kx x Tip = singleton kx x
+    go _ !kx x (Tip ()) = singleton kx x
     go f kx x (Bin sy ky y l r) =
         case compare kx ky of
             LT -> balanceL ky y (go f kx x l) r
@@ -956,7 +956,7 @@ insertWithKeyR :: Ord k => (k -> a -> a -> a) -> k -> a -> Map k a -> Map k a
 insertWithKeyR = go
   where
     go :: Ord k => (k -> a -> a -> a) -> k -> a -> Map k a -> Map k a
-    go _ !kx x Tip = singleton kx x
+    go _ !kx x (Tip ()) = singleton kx x
     go f kx x (Bin sy ky y l r) =
         case compare kx ky of
             LT -> balanceL ky y (go f kx x l) r
@@ -990,7 +990,7 @@ insertLookupWithKey :: Ord k => (k -> a -> a -> a) -> k -> a -> Map k a
 insertLookupWithKey f0 k0 x0 = toPair . go f0 k0 x0
   where
     go :: Ord k => (k -> a -> a -> a) -> k -> a -> Map k a -> StrictPair (Maybe a) (Map k a)
-    go _ !kx x Tip = (Nothing :*: singleton kx x)
+    go _ !kx x (Tip ()) = (Nothing :*: singleton kx x)
     go f kx x (Bin sy ky y l r) =
         case compare kx ky of
             LT -> let !(found :*: l') = go f kx x l
@@ -1021,7 +1021,7 @@ delete :: Ord k => k -> Map k a -> Map k a
 delete = go
   where
     go :: Ord k => k -> Map k a -> Map k a
-    go !_ Tip = Tip
+    go !_ (Tip ()) = Tip ()
     go k t@(Bin _ kx x l r) =
         case compare k kx of
             LT | l' `ptrEq` l -> t
@@ -1065,7 +1065,7 @@ adjustWithKey :: Ord k => (k -> a -> a) -> k -> Map k a -> Map k a
 adjustWithKey = go
   where
     go :: Ord k => (k -> a -> a) -> k -> Map k a -> Map k a
-    go _ !_ Tip = Tip
+    go _ !_ (Tip ()) = Tip ()
     go f k (Bin sx kx x l r) =
         case compare k kx of
            LT -> Bin sx kx x (go f k l) r
@@ -1109,7 +1109,7 @@ updateWithKey :: Ord k => (k -> a -> Maybe a) -> k -> Map k a -> Map k a
 updateWithKey = go
   where
     go :: Ord k => (k -> a -> Maybe a) -> k -> Map k a -> Map k a
-    go _ !_ Tip = Tip
+    go _ !_ (Tip ()) = Tip ()
     go f k(Bin sx kx x l r) =
         case compare k kx of
            LT -> balanceR kx x (go f k l) r
@@ -1137,7 +1137,7 @@ updateLookupWithKey :: Ord k => (k -> a -> Maybe a) -> k -> Map k a -> (Maybe a,
 updateLookupWithKey f0 k0 = toPair . go f0 k0
  where
    go :: Ord k => (k -> a -> Maybe a) -> k -> Map k a -> StrictPair (Maybe a) (Map k a)
-   go _ !_ Tip = (Nothing :*: Tip)
+   go _ !_ (Tip ()) = (Nothing :*: (Tip ()))
    go f k (Bin sx kx x l r) =
           case compare k kx of
                LT -> let !(found :*: l') = go f k l
@@ -1175,8 +1175,8 @@ alter :: Ord k => (Maybe a -> Maybe a) -> k -> Map k a -> Map k a
 alter = go
   where
     go :: Ord k => (Maybe a -> Maybe a) -> k -> Map k a -> Map k a
-    go f !k Tip = case f Nothing of
-               Nothing -> Tip
+    go f !k (Tip ()) = case f Nothing of
+               Nothing -> (Tip ())
                Just x  -> singleton k x
 
     go f k (Bin sx kx x l r) = case compare k kx of
@@ -1305,7 +1305,7 @@ lookupTrace :: Ord k => k -> Map k a -> TraceResult a
 lookupTrace = go emptyQB
   where
     go :: Ord k => BitQueueB -> k -> Map k a -> TraceResult a
-    go !q !_ Tip = TraceResult Nothing (buildQ q)
+    go !q !_ (Tip ()) = TraceResult Nothing (buildQ q)
     go q k (Bin _ kx x l r) = case compare k kx of
       LT -> (go $! q `snocQB` False) k l
       GT -> (go $! q `snocQB` True) k r
@@ -1323,7 +1323,7 @@ lookupTrace = go emptyQB
 -- Insert at a location (which will always be a leaf)
 -- described by the path passed in.
 insertAlong :: BitQueue -> k -> a -> Map k a -> Map k a
-insertAlong !_ kx x Tip = singleton kx x
+insertAlong !_ kx x (Tip ()) = singleton kx x
 insertAlong q kx x (Bin sz ky y l r) =
   case unconsQ q of
         Just (False, tl) -> balanceL ky y (insertAlong tl kx x l) r
@@ -1356,7 +1356,7 @@ deleteAlong old !q0 !m = go (bogus old) q0 m where
 #else
   go :: any -> BitQueue -> Map k a -> Map k a
 #endif
-  go !_ !_ Tip = Tip
+  go !_ !_ (Tip ()) = Tip ()
   go foom q (Bin _ ky y l r) =
       case unconsQ q of
         Just (False, tl) -> balanceR ky y (go foom tl l) r
@@ -1377,7 +1377,7 @@ bogus a = a
 -- Replace the value found in the node described
 -- by the given path with a new one.
 replaceAlong :: BitQueue -> a -> Map k a -> Map k a
-replaceAlong !_ _ Tip = Tip -- Should not happen
+replaceAlong !_ _ (Tip ()) = Tip () -- Should not happen
 replaceAlong q  x (Bin sz ky y l r) =
       case unconsQ q of
         Just (False, tl) -> Bin sz ky y (replaceAlong tl x l) r
@@ -1397,7 +1397,7 @@ atKeyPlain strict k0 f0 t = case go k0 f0 t of
     AltSame -> t
   where
     go :: Ord k => k -> (Maybe a -> Maybe a) -> Map k a -> Altered k a
-    go !k f Tip = case f Nothing of
+    go !k f (Tip ()) = case f Nothing of
                    Nothing -> AltSame
                    Just x  -> case strict of
                      Lazy -> AltBigger $ singleton k x
@@ -1444,8 +1444,8 @@ alterFYoneda = go
   where
     go :: Ord k =>
       k -> (Maybe a -> (Maybe a -> b) -> f b) -> Map k a -> (Map k a -> b) -> f b
-    go !k f Tip g = f Nothing $ \ mx -> case mx of
-      Nothing -> g Tip
+    go !k f (Tip ()) g = f Nothing $ \ mx -> case mx of
+      Nothing -> g (Tip ())
       Just x -> g (singleton k x)
     go k f (Bin sx kx x l r) g = case compare k kx of
                LT -> go k f l (\m -> g (balance kx x m r))
@@ -1474,7 +1474,7 @@ findIndex :: Ord k => k -> Map k a -> Int
 findIndex = go 0
   where
     go :: Ord k => Int -> k -> Map k a -> Int
-    go !_   !_ Tip  = error "Map.findIndex: element is not in the map"
+    go !_   !_ (Tip ())  = error "Map.findIndex: element is not in the map"
     go idx k (Bin _ kx _ l r) = case compare k kx of
       LT -> go idx k l
       GT -> go (idx + size l + 1) k r
@@ -1497,7 +1497,7 @@ lookupIndex :: Ord k => k -> Map k a -> Maybe Int
 lookupIndex = go 0
   where
     go :: Ord k => Int -> k -> Map k a -> Maybe Int
-    go !_  !_ Tip  = Nothing
+    go !_  !_ (Tip ())  = Nothing
     go idx k (Bin _ kx _ l r) = case compare k kx of
       LT -> go idx k l
       GT -> go (idx + size l + 1) k r
@@ -1515,7 +1515,7 @@ lookupIndex = go 0
 -- > elemAt 2 (fromList [(5,"a"), (3,"b")])    Error: index out of range
 
 elemAt :: Int -> Map k a -> (k,a)
-elemAt !_ Tip = error "Map.elemAt: index out of range"
+elemAt !_ (Tip ()) = error "Map.elemAt: index out of range"
 elemAt i (Bin _ kx x l r)
   = case compare i sizeL of
       LT -> elemAt i l
@@ -1537,8 +1537,8 @@ take :: Int -> Map k a -> Map k a
 take i m | i >= size m = m
 take i0 m0 = go i0 m0
   where
-    go i !_ | i <= 0 = Tip
-    go !_ Tip = Tip
+    go i !_ | i <= 0 = Tip ()
+    go !_ (Tip ()) = Tip ()
     go i (Bin _ kx x l r) =
       case compare i sizeL of
         LT -> go i l
@@ -1555,11 +1555,11 @@ take i0 m0 = go i0 m0
 --
 -- @since 0.5.8
 drop :: Int -> Map k a -> Map k a
-drop i m | i >= size m = Tip
+drop i m | i >= size m = Tip ()
 drop i0 m0 = go i0 m0
   where
     go i m | i <= 0 = m
-    go !_ Tip = Tip
+    go !_ (Tip ()) = Tip ()
     go i (Bin _ kx x l r) =
       case compare i sizeL of
         LT -> link kx x (go i l) r
@@ -1576,11 +1576,11 @@ drop i0 m0 = go i0 m0
 -- @since 0.5.8
 splitAt :: Int -> Map k a -> (Map k a, Map k a)
 splitAt i0 m0
-  | i0 >= size m0 = (m0, Tip)
+  | i0 >= size m0 = (m0, (Tip ()))
   | otherwise = toPair $ go i0 m0
   where
-    go i m | i <= 0 = Tip :*: m
-    go !_ Tip = Tip :*: Tip
+    go i m | i <= 0 = Tip () :*: m
+    go !_ (Tip ()) = Tip () :*: (Tip ())
     go i (Bin _ kx x l r)
       = case compare i sizeL of
           LT -> case go i l of
@@ -1606,7 +1606,7 @@ splitAt i0 m0
 updateAt :: (k -> a -> Maybe a) -> Int -> Map k a -> Map k a
 updateAt f !i t =
   case t of
-    Tip -> error "Map.updateAt: index out of range"
+    (Tip ()) -> error "Map.updateAt: index out of range"
     Bin sx kx x l r -> case compare i sizeL of
       LT -> balanceR kx x (updateAt f i l) r
       GT -> balanceL kx x l (updateAt f (i-sizeL-1) r)
@@ -1628,7 +1628,7 @@ updateAt f !i t =
 deleteAt :: Int -> Map k a -> Map k a
 deleteAt !i t =
   case t of
-    Tip -> error "Map.deleteAt: index out of range"
+    (Tip ()) -> error "Map.deleteAt: index out of range"
     Bin _ kx x l r -> case compare i sizeL of
       LT -> balanceR kx x (deleteAt i l) r
       GT -> balanceL kx x l (deleteAt (i-sizeL-1) r)
@@ -1642,7 +1642,7 @@ deleteAt !i t =
 --------------------------------------------------------------------}
 
 lookupMinSure :: k -> a -> Map k a -> (k, a)
-lookupMinSure k a Tip = (k, a)
+lookupMinSure k a (Tip ()) = (k, a)
 lookupMinSure _ _ (Bin _ k a l _) = lookupMinSure k a l
 
 -- | /O(log n)/. The minimal key of the map. Returns 'Nothing' if the map is empty.
@@ -1653,7 +1653,7 @@ lookupMinSure _ _ (Bin _ k a l _) = lookupMinSure k a l
 -- @since 0.5.9
 
 lookupMin :: Map k a -> Maybe (k,a)
-lookupMin Tip = Nothing
+lookupMin (Tip ()) = Nothing
 lookupMin (Bin _ k x l _) = Just $! lookupMinSure k x l
 
 -- | /O(log n)/. The minimal key of the map. Calls 'error' if the map is empty.
@@ -1672,7 +1672,7 @@ findMin t
 -- > findMax empty                            Error: empty map has no maximal element
 
 lookupMaxSure :: k -> a -> Map k a -> (k, a)
-lookupMaxSure k a Tip = (k, a)
+lookupMaxSure k a (Tip ()) = (k, a)
 lookupMaxSure _ _ (Bin _ k a _ r) = lookupMaxSure k a r
 
 -- | /O(log n)/. The maximal key of the map. Returns 'Nothing' if the map is empty.
@@ -1683,7 +1683,7 @@ lookupMaxSure _ _ (Bin _ k a _ r) = lookupMaxSure k a r
 -- @since 0.5.9
 
 lookupMax :: Map k a -> Maybe (k, a)
-lookupMax Tip = Nothing
+lookupMax (Tip ()) = Nothing
 lookupMax (Bin _ k x _ r) = Just $! lookupMaxSure k x r
 
 findMax :: Map k a -> (k,a)
@@ -1697,9 +1697,9 @@ findMax t
 -- > deleteMin empty == empty
 
 deleteMin :: Map k a -> Map k a
-deleteMin (Bin _ _  _ Tip r)  = r
+deleteMin (Bin _ _  _ (Tip ()) r)  = r
 deleteMin (Bin _ kx x l r)    = balanceR kx x (deleteMin l) r
-deleteMin Tip                 = Tip
+deleteMin (Tip ())                 = Tip ()
 
 -- | /O(log n)/. Delete the maximal key. Returns an empty map if the map is empty.
 --
@@ -1707,9 +1707,9 @@ deleteMin Tip                 = Tip
 -- > deleteMax empty == empty
 
 deleteMax :: Map k a -> Map k a
-deleteMax (Bin _ _  _ l Tip)  = l
+deleteMax (Bin _ _  _ l (Tip ()))  = l
 deleteMax (Bin _ kx x l r)    = balanceL kx x l (deleteMax r)
-deleteMax Tip                 = Tip
+deleteMax (Tip ())                 = Tip ()
 
 -- | /O(log n)/. Update the value at the minimal key.
 --
@@ -1736,10 +1736,10 @@ updateMax f m
 -- > updateMinWithKey (\ _ _ -> Nothing)                     (fromList [(5,"a"), (3,"b")]) == singleton 5 "a"
 
 updateMinWithKey :: (k -> a -> Maybe a) -> Map k a -> Map k a
-updateMinWithKey _ Tip                 = Tip
-updateMinWithKey f (Bin sx kx x Tip r) = case f kx x of
+updateMinWithKey _ (Tip ())                 = Tip ()
+updateMinWithKey f (Bin sx kx x (Tip ()) r) = case f kx x of
                                            Nothing -> r
-                                           Just x' -> Bin sx kx x' Tip r
+                                           Just x' -> Bin sx kx x' (Tip ()) r
 updateMinWithKey f (Bin _ kx x l r)    = balanceR kx x (updateMinWithKey f l) r
 
 -- | /O(log n)/. Update the value at the maximal key.
@@ -1748,10 +1748,10 @@ updateMinWithKey f (Bin _ kx x l r)    = balanceR kx x (updateMinWithKey f l) r
 -- > updateMaxWithKey (\ _ _ -> Nothing)                     (fromList [(5,"a"), (3,"b")]) == singleton 3 "b"
 
 updateMaxWithKey :: (k -> a -> Maybe a) -> Map k a -> Map k a
-updateMaxWithKey _ Tip                 = Tip
-updateMaxWithKey f (Bin sx kx x l Tip) = case f kx x of
+updateMaxWithKey _ (Tip ())                 = Tip ()
+updateMaxWithKey f (Bin sx kx x l (Tip ())) = case f kx x of
                                            Nothing -> l
-                                           Just x' -> Bin sx kx x' l Tip
+                                           Just x' -> Bin sx kx x' l (Tip ())
 updateMaxWithKey f (Bin _ kx x l r)    = balanceL kx x l (updateMaxWithKey f r)
 
 -- | /O(log n)/. Retrieves the minimal (key,value) pair of the map, and
@@ -1761,7 +1761,7 @@ updateMaxWithKey f (Bin _ kx x l r)    = balanceL kx x l (updateMaxWithKey f r)
 -- > minViewWithKey empty == Nothing
 
 minViewWithKey :: Map k a -> Maybe ((k,a), Map k a)
-minViewWithKey Tip = Nothing
+minViewWithKey (Tip ()) = Nothing
 minViewWithKey (Bin _ k x l r) = Just $
   case minViewSure k x l r of
     MinView km xm t -> ((km, xm), t)
@@ -1777,7 +1777,7 @@ minViewWithKey (Bin _ k x l r) = Just $
 -- > maxViewWithKey empty == Nothing
 
 maxViewWithKey :: Map k a -> Maybe ((k,a), Map k a)
-maxViewWithKey Tip = Nothing
+maxViewWithKey (Tip ()) = Nothing
 maxViewWithKey (Bin _ k x l r) = Just $
   case maxViewSure k x l r of
     MaxView km xm t -> ((km, xm), t)
@@ -1847,10 +1847,10 @@ unionsWith f ts
 -- > union (fromList [(5, "a"), (3, "b")]) (fromList [(5, "A"), (7, "C")]) == fromList [(3, "b"), (5, "a"), (7, "C")]
 
 union :: Ord k => Map k a -> Map k a -> Map k a
-union t1 Tip  = t1
-union t1 (Bin _ k x Tip Tip) = insertR k x t1
-union (Bin _ k x Tip Tip) t2 = insert k x t2
-union Tip t2 = t2
+union t1 (Tip ())  = t1
+union t1 (Bin _ k x (Tip ()) (Tip ())) = insertR k x t1
+union (Bin _ k x (Tip ()) (Tip ())) t2 = insert k x t2
+union (Tip ()) t2 = t2
 union t1@(Bin _ k1 x1 l1 r1) t2 = case split k1 t2 of
   (l2, r2) | l1l2 `ptrEq` l1 && r1r2 `ptrEq` r1 -> t1
            | otherwise -> link k1 x1 l1l2 r1r2
@@ -1869,10 +1869,10 @@ union t1@(Bin _ k1 x1 l1 r1) t2 = case split k1 t2 of
 
 unionWith :: Ord k => (a -> a -> a) -> Map k a -> Map k a -> Map k a
 -- QuickCheck says pointer equality never happens here.
-unionWith _f t1 Tip = t1
-unionWith f t1 (Bin _ k x Tip Tip) = insertWithR f k x t1
-unionWith f (Bin _ k x Tip Tip) t2 = insertWith f k x t2
-unionWith _f Tip t2 = t2
+unionWith _f t1 (Tip ()) = t1
+unionWith f t1 (Bin _ k x (Tip ()) (Tip ())) = insertWithR f k x t1
+unionWith f (Bin _ k x (Tip ()) (Tip ())) t2 = insertWith f k x t2
+unionWith _f (Tip ()) t2 = t2
 unionWith f (Bin _ k1 x1 l1 r1) t2 = case splitLookup k1 t2 of
   (l2, mb, r2) -> case mb of
       Nothing -> link k1 x1 l1l2 r1r2
@@ -1890,10 +1890,10 @@ unionWith f (Bin _ k1 x1 l1 r1) t2 = case splitLookup k1 t2 of
 -- > unionWithKey f (fromList [(5, "a"), (3, "b")]) (fromList [(5, "A"), (7, "C")]) == fromList [(3, "b"), (5, "5:a|A"), (7, "C")]
 
 unionWithKey :: Ord k => (k -> a -> a -> a) -> Map k a -> Map k a -> Map k a
-unionWithKey _f t1 Tip = t1
-unionWithKey f t1 (Bin _ k x Tip Tip) = insertWithKeyR f k x t1
-unionWithKey f (Bin _ k x Tip Tip) t2 = insertWithKey f k x t2
-unionWithKey _f Tip t2 = t2
+unionWithKey _f t1 (Tip ()) = t1
+unionWithKey f t1 (Bin _ k x (Tip ()) (Tip ())) = insertWithKeyR f k x t1
+unionWithKey f (Bin _ k x (Tip ()) (Tip ())) t2 = insertWithKey f k x t2
+unionWithKey _f (Tip ()) t2 = t2
 unionWithKey f (Bin _ k1 x1 l1 r1) t2 = case splitLookup k1 t2 of
   (l2, mb, r2) -> case mb of
       Nothing -> link k1 x1 l1l2 r1r2
@@ -1920,8 +1920,8 @@ unionWithKey f (Bin _ k1 x1 l1 r1) t2 = case splitLookup k1 t2 of
 -- > difference (fromList [(5, "a"), (3, "b")]) (fromList [(5, "A"), (7, "C")]) == singleton 3 "b"
 
 difference :: Ord k => Map k a -> Map k b -> Map k a
-difference Tip _   = Tip
-difference t1 Tip  = t1
+difference (Tip ()) _   = Tip ()
+difference t1 (Tip ())  = t1
 difference t1 (Bin _ k _ l2 r2) = case split k t1 of
   (l1, r1)
     | size l1l2 + size r1r2 == size t1 -> t1
@@ -1943,8 +1943,8 @@ difference t1 (Bin _ k _ l2 r2) = case split k t1 of
 -- @since 0.5.8
 
 withoutKeys :: Ord k => Map k a -> Set k -> Map k a
-withoutKeys Tip _ = Tip
-withoutKeys m Set.Tip = m
+withoutKeys (Tip ()) _ = Tip ()
+withoutKeys m (Set.Tip ()) = m
 withoutKeys m (Set.Bin _ k ls rs) = case splitMember k m of
   (lm, b, rm)
      | not b && lm' `ptrEq` lm && rm' `ptrEq` rm -> m
@@ -1999,8 +1999,8 @@ differenceWithKey f =
 -- > intersection (fromList [(5, "a"), (3, "b")]) (fromList [(5, "A"), (7, "C")]) == singleton 5 "a"
 
 intersection :: Ord k => Map k a -> Map k b -> Map k a
-intersection Tip _ = Tip
-intersection _ Tip = Tip
+intersection (Tip ()) _ = Tip ()
+intersection _ (Tip ()) = Tip ()
 intersection t1@(Bin _ k x l1 r1) t2
   | mb = if l1l2 `ptrEq` l1 && r1r2 `ptrEq` r1
          then t1
@@ -2024,8 +2024,8 @@ intersection t1@(Bin _ k x l1 r1) t2
 --
 -- @since 0.5.8
 restrictKeys :: Ord k => Map k a -> Set k -> Map k a
-restrictKeys Tip _ = Tip
-restrictKeys _ Set.Tip = Tip
+restrictKeys (Tip ()) _ = Tip ()
+restrictKeys _ (Set.Tip ()) = Tip ()
 restrictKeys m@(Bin _ k x l1 r1) s
   | b = if l1l2 `ptrEq` l1 && r1r2 `ptrEq` r1
         then m
@@ -2046,8 +2046,8 @@ restrictKeys m@(Bin _ k x l1 r1) s
 intersectionWith :: Ord k => (a -> b -> c) -> Map k a -> Map k b -> Map k c
 -- We have no hope of pointer equality tricks here because every single
 -- element in the result will be a thunk.
-intersectionWith _f Tip _ = Tip
-intersectionWith _f _ Tip = Tip
+intersectionWith _f (Tip ()) _ = Tip ()
+intersectionWith _f _ (Tip ()) = Tip ()
 intersectionWith f (Bin _ k x1 l1 r1) t2 = case mb of
     Just x2 -> link k (f x1 x2) l1l2 r1r2
     Nothing -> link2 l1l2 r1r2
@@ -2065,8 +2065,8 @@ intersectionWith f (Bin _ k x1 l1 r1) t2 = case mb of
 -- > intersectionWithKey f (fromList [(5, "a"), (3, "b")]) (fromList [(5, "A"), (7, "C")]) == singleton 5 "5:a|A"
 
 intersectionWithKey :: Ord k => (k -> a -> b -> c) -> Map k a -> Map k b -> Map k c
-intersectionWithKey _f Tip _ = Tip
-intersectionWithKey _f _ Tip = Tip
+intersectionWithKey _f (Tip ()) _ = Tip ()
+intersectionWithKey _f _ (Tip ()) = Tip ()
 intersectionWithKey f (Bin _ k x1 l1 r1) t2 = case mb of
     Just x2 -> link k (f k x1 x2) l1l2 r1r2
     Nothing -> link2 l1l2 r1r2
@@ -2097,8 +2097,8 @@ intersectionWithKey f (Bin _ k x1 l1 r1) t2 = case mb of
 -- See 'Data.Set.Internal.isSubsetOfX' for some background
 -- on the implementation design.
 disjoint :: Ord k => Map k a -> Map k b -> Bool
-disjoint Tip _ = True
-disjoint _ Tip = True
+disjoint (Tip ()) _ = True
+disjoint _ (Tip ()) = True
 disjoint (Bin 1 k _ _ _) t = k `notMember` t
 disjoint (Bin _ k _ l r) t
   = not found && disjoint l lt && disjoint r gt
@@ -2426,7 +2426,7 @@ zipWithMaybeAMatched f = WhenMatched $ \ k x y -> f k x y
 -- @since 0.5.9
 dropMissing :: Applicative f => WhenMissing f k x y
 dropMissing = WhenMissing
-  { missingSubtree = const (pure Tip)
+  { missingSubtree = const (pure (Tip ()))
   , missingKey = \_ _ -> pure Nothing }
 {-# INLINE dropMissing #-}
 
@@ -2469,7 +2469,7 @@ preserveMissing' = WhenMissing
 -- Force all the values in a tree.
 forceTree :: Map k a -> ()
 forceTree (Bin _ _ v l r) = v `seq` forceTree l `seq` forceTree r `seq` ()
-forceTree Tip = ()
+forceTree (Tip ()) = ()
 
 -- | Map over the entries whose keys are missing from the other map.
 --
@@ -2728,8 +2728,8 @@ mergeA
     WhenMissing{missingSubtree = g2t}
     (WhenMatched f) = go
   where
-    go t1 Tip = g1t t1
-    go Tip t2 = g2t t2
+    go t1 (Tip ()) = g1t t1
+    go (Tip ()) t2 = g2t t2
     go (Bin _ kx x1 l1 r1) t2 = case splitLookup kx t2 of
       (l2, mx2, r2) -> case mx2 of
           Nothing -> liftA3 (\l' mx' r' -> maybe link2 (link kx) mx' l' r')
@@ -2786,13 +2786,13 @@ mergeWithKey :: Ord k
              -> Map k a -> Map k b -> Map k c
 mergeWithKey f g1 g2 = go
   where
-    go Tip t2 = g2 t2
-    go t1 Tip = g1 t1
+    go (Tip ()) t2 = g2 t2
+    go t1 (Tip ()) = g1 t1
     go (Bin _ kx x l1 r1) t2 =
       case found of
         Nothing -> case g1 (singleton kx x) of
-                     Tip -> link2 l' r'
-                     (Bin _ _ x' Tip Tip) -> link kx x' l' r'
+                     (Tip ()) -> link2 l' r'
+                     (Bin _ _ x' (Tip ()) (Tip ())) -> link kx x' l' r'
                      _ -> error "mergeWithKey: Given function only1 does not fulfill required conditions (see documentation)"
         Just x2 -> case f kx x x2 of
                      Nothing -> link2 l' r'
@@ -2846,8 +2846,8 @@ isSubmapOfBy f t1 t2
 -- size test. See Data.Set.Internal.isSubsetOfX for notes on
 -- implementation and analysis.
 submap' :: Ord a => (b -> c -> Bool) -> Map a b -> Map a c -> Bool
-submap' _ Tip _ = True
-submap' _ _ Tip = False
+submap' _ (Tip ()) _ = True
+submap' _ _ (Tip ()) = False
 submap' f (Bin 1 kx x _ _) t
   = case lookup kx t of
       Just y -> f x y
@@ -2916,7 +2916,7 @@ filter p m
 -- > filterWithKey (\k _ -> k > 4) (fromList [(5,"a"), (3,"b")]) == singleton 5 "a"
 
 filterWithKey :: (k -> a -> Bool) -> Map k a -> Map k a
-filterWithKey _ Tip = Tip
+filterWithKey _ (Tip ()) = Tip ()
 filterWithKey p t@(Bin _ kx x l r)
   | p kx x    = if pl `ptrEq` l && pr `ptrEq` r
                 then t
@@ -2928,7 +2928,7 @@ filterWithKey p t@(Bin _ kx x l r)
 -- | /O(n)/. Filter keys and values using an 'Applicative'
 -- predicate.
 filterWithKeyA :: Applicative f => (k -> a -> f Bool) -> Map k a -> f (Map k a)
-filterWithKeyA _ Tip = pure Tip
+filterWithKeyA _ (Tip ()) = pure (Tip ())
 filterWithKeyA p t@(Bin _ kx x l r) =
   liftA3 combine (p kx x) (filterWithKeyA p l) (filterWithKeyA p r)
   where
@@ -2949,7 +2949,7 @@ filterWithKeyA p t@(Bin _ kx x l r) =
 -- @since 0.5.8
 
 takeWhileAntitone :: (k -> Bool) -> Map k a -> Map k a
-takeWhileAntitone _ Tip = Tip
+takeWhileAntitone _ (Tip ()) = Tip ()
 takeWhileAntitone p (Bin _ kx x l r)
   | p kx = link kx x l (takeWhileAntitone p r)
   | otherwise = takeWhileAntitone p l
@@ -2966,7 +2966,7 @@ takeWhileAntitone p (Bin _ kx x l r)
 -- @since 0.5.8
 
 dropWhileAntitone :: (k -> Bool) -> Map k a -> Map k a
-dropWhileAntitone _ Tip = Tip
+dropWhileAntitone _ (Tip ()) = Tip ()
 dropWhileAntitone p (Bin _ kx x l r)
   | p kx = dropWhileAntitone p r
   | otherwise = link kx x (dropWhileAntitone p l) r
@@ -2990,7 +2990,7 @@ dropWhileAntitone p (Bin _ kx x l r)
 spanAntitone :: (k -> Bool) -> Map k a -> (Map k a, Map k a)
 spanAntitone p0 m = toPair (go p0 m)
   where
-    go _ Tip = Tip :*: Tip
+    go _ (Tip ()) = Tip () :*: (Tip ())
     go p (Bin _ kx x l r)
       | p kx = let u :*: v = go p r in link kx x l u :*: v
       | otherwise = let u :*: v = go p l in u :*: link kx x v r
@@ -3018,7 +3018,7 @@ partition p m
 partitionWithKey :: (k -> a -> Bool) -> Map k a -> (Map k a,Map k a)
 partitionWithKey p0 t0 = toPair $ go p0 t0
   where
-    go _ Tip = (Tip :*: Tip)
+    go _ (Tip ()) = ((Tip ()) :*: (Tip ()))
     go p t@(Bin _ kx x l r)
       | p kx x    = (if l1 `ptrEq` l && r1 `ptrEq` r
                      then t
@@ -3045,7 +3045,7 @@ mapMaybe f = mapMaybeWithKey (\_ x -> f x)
 -- > mapMaybeWithKey f (fromList [(5,"a"), (3,"b")]) == singleton 3 "key : 3"
 
 mapMaybeWithKey :: (k -> a -> Maybe b) -> Map k a -> Map k b
-mapMaybeWithKey _ Tip = Tip
+mapMaybeWithKey _ (Tip ()) = Tip ()
 mapMaybeWithKey f (Bin _ kx x l r) = case f kx x of
   Just y  -> link kx y (mapMaybeWithKey f l) (mapMaybeWithKey f r)
   Nothing -> link2 (mapMaybeWithKey f l) (mapMaybeWithKey f r)
@@ -3057,8 +3057,8 @@ traverseMaybeWithKey :: Applicative f
                      => (k -> a -> f (Maybe b)) -> Map k a -> f (Map k b)
 traverseMaybeWithKey = go
   where
-    go _ Tip = pure Tip
-    go f (Bin _ kx x Tip Tip) = maybe Tip (\x' -> Bin 1 kx x' Tip Tip) <$> f kx x
+    go _ (Tip ()) = pure (Tip ())
+    go f (Bin _ kx x (Tip ()) (Tip ())) = maybe (Tip ()) (\x' -> Bin 1 kx x' (Tip ()) (Tip ())) <$> f kx x
     go f (Bin _ kx x l r) = liftA3 combine (go f l) (f kx x) (go f r)
       where
         combine !l' mx !r' = case mx of
@@ -3090,7 +3090,7 @@ mapEither f m
 mapEitherWithKey :: (k -> a -> Either b c) -> Map k a -> (Map k b, Map k c)
 mapEitherWithKey f0 t0 = toPair $ go f0 t0
   where
-    go _ Tip = (Tip :*: Tip)
+    go _ (Tip ()) = ((Tip ()) :*: (Tip ()))
     go f (Bin _ kx x l r) = case f kx x of
       Left y  -> link kx y l1 r1 :*: link2 l2 r2
       Right z -> link2 l1 r1 :*: link kx z l2 r2
@@ -3107,7 +3107,7 @@ mapEitherWithKey f0 t0 = toPair $ go f0 t0
 
 map :: (a -> b) -> Map k a -> Map k b
 map f = go where
-  go Tip = Tip
+  go (Tip ()) = Tip ()
   go (Bin sx kx x l r) = Bin sx kx (f x) (go l) (go r)
 -- We use a `go` function to allow `map` to inline. This makes
 -- a big difference if someone uses `map (const x) m` instead
@@ -3132,7 +3132,7 @@ map f = go where
 -- > mapWithKey f (fromList [(5,"a"), (3,"b")]) == fromList [(3, "3:b"), (5, "5:a")]
 
 mapWithKey :: (k -> a -> b) -> Map k a -> Map k b
-mapWithKey _ Tip = Tip
+mapWithKey _ (Tip ()) = Tip ()
 mapWithKey f (Bin sx kx x l r) = Bin sx kx (f kx x) (mapWithKey f l) (mapWithKey f r)
 
 #ifdef __GLASGOW_HASKELL__
@@ -3157,8 +3157,8 @@ mapWithKey f (Bin sx kx x l r) = Bin sx kx (f kx x) (mapWithKey f l) (mapWithKey
 traverseWithKey :: Applicative t => (k -> a -> t b) -> Map k a -> t (Map k b)
 traverseWithKey f = go
   where
-    go Tip = pure Tip
-    go (Bin 1 k v _ _) = (\v' -> Bin 1 k v' Tip Tip) <$> f k v
+    go (Tip ()) = pure (Tip ())
+    go (Bin 1 k v _ _) = (\v' -> Bin 1 k v' (Tip ()) (Tip ())) <$> f k v
     go (Bin s k v l r) = liftA3 (flip (Bin s k)) (go l) (f k v) (go r)
 {-# INLINE traverseWithKey #-}
 
@@ -3185,7 +3185,7 @@ mapAccumWithKey f a t
 -- | /O(n)/. The function 'mapAccumL' threads an accumulating
 -- argument through the map in ascending order of keys.
 mapAccumL :: (a -> k -> b -> (a,c)) -> a -> Map k b -> (a,Map k c)
-mapAccumL _ a Tip               = (a,Tip)
+mapAccumL _ a (Tip ())               = (a,(Tip ()))
 mapAccumL f a (Bin sx kx x l r) =
   let (a1,l') = mapAccumL f a l
       (a2,x') = f a1 kx x
@@ -3195,7 +3195,7 @@ mapAccumL f a (Bin sx kx x l r) =
 -- | /O(n)/. The function 'mapAccumRWithKey' threads an accumulating
 -- argument through the map in descending order of keys.
 mapAccumRWithKey :: (a -> k -> b -> (a,c)) -> a -> Map k b -> (a,Map k c)
-mapAccumRWithKey _ a Tip = (a,Tip)
+mapAccumRWithKey _ a (Tip ()) = (a,(Tip ()))
 mapAccumRWithKey f a (Bin sx kx x l r) =
   let (a1,r') = mapAccumRWithKey f a r
       (a2,x') = f a1 kx x
@@ -3256,7 +3256,7 @@ mapKeysWith c f = fromListWith c . foldrWithKey (\k x xs -> (f k, x) : xs) []
 -- > valid (mapKeysMonotonic (\ _ -> 1)     (fromList [(5,"a"), (3,"b")])) == False
 
 mapKeysMonotonic :: (k1->k2) -> Map k1 a -> Map k2 a
-mapKeysMonotonic _ Tip = Tip
+mapKeysMonotonic _ (Tip ()) = Tip ()
 mapKeysMonotonic f (Bin sz k x l r) =
     Bin sz (f k) x (mapKeysMonotonic f l) (mapKeysMonotonic f r)
 
@@ -3276,7 +3276,7 @@ mapKeysMonotonic f (Bin sz k x l r) =
 foldr :: (a -> b -> b) -> b -> Map k a -> b
 foldr f z = go z
   where
-    go z' Tip             = z'
+    go z' (Tip ())             = z'
     go z' (Bin _ _ x l r) = go (f x (go z' r)) l
 {-# INLINE foldr #-}
 
@@ -3286,7 +3286,7 @@ foldr f z = go z
 foldr' :: (a -> b -> b) -> b -> Map k a -> b
 foldr' f z = go z
   where
-    go !z' Tip            = z'
+    go !z' (Tip ())            = z'
     go z' (Bin _ _ x l r) = go (f x $! go z' r) l
 {-# INLINE foldr' #-}
 
@@ -3302,7 +3302,7 @@ foldr' f z = go z
 foldl :: (a -> b -> a) -> a -> Map k b -> a
 foldl f z = go z
   where
-    go z' Tip             = z'
+    go z' (Tip ())             = z'
     go z' (Bin _ _ x l r) = go (f (go z' l) x) r
 {-# INLINE foldl #-}
 
@@ -3312,7 +3312,7 @@ foldl f z = go z
 foldl' :: (a -> b -> a) -> a -> Map k b -> a
 foldl' f z = go z
   where
-    go !z' Tip            = z'
+    go !z' (Tip ())            = z'
     go z' (Bin _ _ x l r) =
       let !z'' = go z' l
       in go (f z'' x) r
@@ -3331,7 +3331,7 @@ foldl' f z = go z
 foldrWithKey :: (k -> a -> b -> b) -> b -> Map k a -> b
 foldrWithKey f z = go z
   where
-    go z' Tip             = z'
+    go z' (Tip ())             = z'
     go z' (Bin _ kx x l r) = go (f kx x (go z' r)) l
 {-# INLINE foldrWithKey #-}
 
@@ -3341,7 +3341,7 @@ foldrWithKey f z = go z
 foldrWithKey' :: (k -> a -> b -> b) -> b -> Map k a -> b
 foldrWithKey' f z = go z
   where
-    go !z' Tip              = z'
+    go !z' (Tip ())              = z'
     go z' (Bin _ kx x l r) = go (f kx x $! go z' r) l
 {-# INLINE foldrWithKey' #-}
 
@@ -3358,7 +3358,7 @@ foldrWithKey' f z = go z
 foldlWithKey :: (a -> k -> b -> a) -> a -> Map k b -> a
 foldlWithKey f z = go z
   where
-    go z' Tip              = z'
+    go z' (Tip ())              = z'
     go z' (Bin _ kx x l r) = go (f (go z' l) kx x) r
 {-# INLINE foldlWithKey #-}
 
@@ -3368,7 +3368,7 @@ foldlWithKey f z = go z
 foldlWithKey' :: (a -> k -> b -> a) -> a -> Map k b -> a
 foldlWithKey' f z = go z
   where
-    go !z' Tip             = z'
+    go !z' (Tip ())             = z'
     go z' (Bin _ kx x l r) =
       let !z'' = go z' l
       in go (f z'' kx x) r
@@ -3384,7 +3384,7 @@ foldlWithKey' f z = go z
 foldMapWithKey :: Monoid m => (k -> a -> m) -> Map k a -> m
 foldMapWithKey f = go
   where
-    go Tip             = mempty
+    go (Tip ())             = mempty
     go (Bin 1 k v _ _) = f k v
     go (Bin _ k v l r) = go l `mappend` (f k v `mappend` go r)
 {-# INLINE foldMapWithKey #-}
@@ -3427,7 +3427,7 @@ assocs m
 -- > keysSet empty == Data.Set.empty
 
 keysSet :: Map k a -> Set.Set k
-keysSet Tip = Set.Tip
+keysSet (Tip ()) = (Set.Tip ())
 keysSet (Bin sz kx _ l r) = Set.Bin sz kx (keysSet l) (keysSet r)
 
 -- | /O(n)/. Build a map from a set of keys and a function which for each key
@@ -3437,7 +3437,7 @@ keysSet (Bin sz kx _ l r) = Set.Bin sz kx (keysSet l) (keysSet r)
 -- > fromSet undefined Data.Set.empty == empty
 
 fromSet :: (k -> a) -> Set.Set k -> Map k a
-fromSet _ Set.Tip = Tip
+fromSet _ (Set.Tip ()) = Tip ()
 fromSet f (Set.Bin sz x l r) = Bin sz x (f x) (fromSet f l) (fromSet f r)
 
 {--------------------------------------------------------------------
@@ -3465,10 +3465,10 @@ instance (Ord k) => GHCExts.IsList (Map k v) where
 -- For some reason, when 'singleton' is used in fromList or in
 -- create, it is not inlined, so we inline it manually.
 fromList :: Ord k => [(k,a)] -> Map k a
-fromList [] = Tip
-fromList [(kx, x)] = Bin 1 kx x Tip Tip
-fromList ((kx0, x0) : xs0) | not_ordered kx0 xs0 = fromList' (Bin 1 kx0 x0 Tip Tip) xs0
-                           | otherwise = go (1::Int) (Bin 1 kx0 x0 Tip Tip) xs0
+fromList [] = Tip ()
+fromList [(kx, x)] = Bin 1 kx x (Tip ()) (Tip ())
+fromList ((kx0, x0) : xs0) | not_ordered kx0 xs0 = fromList' (Bin 1 kx0 x0 (Tip ()) (Tip ())) xs0
+                           | otherwise = go (1::Int) (Bin 1 kx0 x0 (Tip ()) (Tip ())) xs0
   where
     not_ordered _ [] = False
     not_ordered kx ((ky,_) : _) = kx >= ky
@@ -3489,10 +3489,10 @@ fromList ((kx0, x0) : xs0) | not_ordered kx0 xs0 = fromList' (Bin 1 kx0 x0 Tip T
     -- If ys is nonempty, the keys in ys are not ordered with respect to tree
     -- and must be inserted using fromList'. Otherwise the keys have been
     -- ordered so far.
-    create !_ [] = (Tip, [], [])
+    create !_ [] = ((Tip ()), [], [])
     create s xs@(xp : xss)
-      | s == 1 = case xp of (kx, x) | not_ordered kx xss -> (Bin 1 kx x Tip Tip, [], xss)
-                                    | otherwise -> (Bin 1 kx x Tip Tip, xss, [])
+      | s == 1 = case xp of (kx, x) | not_ordered kx xss -> (Bin 1 kx x (Tip ()) (Tip ()), [], xss)
+                                    | otherwise -> (Bin 1 kx x (Tip ()) (Tip ()), xss, [])
       | otherwise = case create (s `shiftR` 1) xs of
                       res@(_, [], _) -> res
                       (l, [(ky, y)], zs) -> (insertMax ky y l, [], zs)
@@ -3747,17 +3747,17 @@ fromDescListWithKey f xs
 -- For some reason, when 'singleton' is used in fromDistinctAscList or in
 -- create, it is not inlined, so we inline it manually.
 fromDistinctAscList :: [(k,a)] -> Map k a
-fromDistinctAscList [] = Tip
-fromDistinctAscList ((kx0, x0) : xs0) = go (1::Int) (Bin 1 kx0 x0 Tip Tip) xs0
+fromDistinctAscList [] = Tip ()
+fromDistinctAscList ((kx0, x0) : xs0) = go (1::Int) (Bin 1 kx0 x0 (Tip ()) (Tip ())) xs0
   where
     go !_ t [] = t
     go s l ((kx, x) : xs) = case create s xs of
                                 (r :*: ys) -> let !t' = link kx x l r
                                               in go (s `shiftL` 1) t' ys
 
-    create !_ [] = (Tip :*: [])
+    create !_ [] = ((Tip ()) :*: [])
     create s xs@(x' : xs')
-      | s == 1 = case x' of (kx, x) -> (Bin 1 kx x Tip Tip :*: xs')
+      | s == 1 = case x' of (kx, x) -> (Bin 1 kx x (Tip ()) (Tip ()) :*: xs')
       | otherwise = case create (s `shiftR` 1) xs of
                       res@(_ :*: []) -> res
                       (l :*: (ky, y):ys) -> case create (s `shiftR` 1) ys of
@@ -3775,17 +3775,17 @@ fromDistinctAscList ((kx0, x0) : xs0) = go (1::Int) (Bin 1 kx0 x0 Tip Tip) xs0
 -- For some reason, when 'singleton' is used in fromDistinctDescList or in
 -- create, it is not inlined, so we inline it manually.
 fromDistinctDescList :: [(k,a)] -> Map k a
-fromDistinctDescList [] = Tip
-fromDistinctDescList ((kx0, x0) : xs0) = go (1 :: Int) (Bin 1 kx0 x0 Tip Tip) xs0
+fromDistinctDescList [] = Tip ()
+fromDistinctDescList ((kx0, x0) : xs0) = go (1 :: Int) (Bin 1 kx0 x0 (Tip ()) (Tip ())) xs0
   where
      go !_ t [] = t
      go s r ((kx, x) : xs) = case create s xs of
                                (l :*: ys) -> let !t' = link kx x l r
                                              in go (s `shiftL` 1) t' ys
 
-     create !_ [] = (Tip :*: [])
+     create !_ [] = ((Tip ()) :*: [])
      create s xs@(x' : xs')
-       | s == 1 = case x' of (kx, x) -> (Bin 1 kx x Tip Tip :*: xs')
+       | s == 1 = case x' of (kx, x) -> (Bin 1 kx x (Tip ()) (Tip ()) :*: xs')
        | otherwise = case create (s `shiftR` 1) xs of
                        res@(_ :*: []) -> res
                        (r :*: (ky, y):ys) -> case create (s `shiftR` 1) ys of
@@ -3803,7 +3803,7 @@ fromDistinctDescList ((kx0, x0) : xs0) = go (1 :: Int) (Bin 1 kx0 x0 Tip Tip) xs
   [filterLt b t] filter all keys <[b] from tree [t]
 --------------------------------------------------------------------}
 filterGt :: Ord k => k -> Map k v -> Map k v
-filterGt !_ Tip = Tip
+filterGt !_ (Tip ()) = Tip ()
 filterGt !b (Bin _ kx x l r) =
   case compare b kx of LT -> link kx x (filterGt b l) r
                        EQ -> r
@@ -3813,7 +3813,7 @@ filterGt !b (Bin _ kx x l r) =
 #endif
 
 filterLt :: Ord k => k -> Map k v -> Map k v
-filterLt !_ Tip = Tip
+filterLt !_ (Tip ()) = Tip ()
 filterLt !b (Bin _ kx x l r) =
   case compare kx b of LT -> link kx x l (filterLt b r)
                        EQ -> l
@@ -3841,7 +3841,7 @@ split !k0 t0 = toPair $ go k0 t0
   where
     go k t =
       case t of
-        Tip            -> Tip :*: Tip
+        (Tip ())            -> (Tip ()) :*: (Tip ())
         Bin _ kx x l r -> case compare k kx of
           LT -> let (lt :*: gt) = go k l in lt :*: link kx x gt r
           GT -> let (lt :*: gt) = go k r in link kx x l lt :*: gt
@@ -3865,7 +3865,7 @@ splitLookup k0 m = case go k0 m of
     go :: Ord k => k -> Map k a -> StrictTriple (Map k a) (Maybe a) (Map k a)
     go !k t =
       case t of
-        Tip            -> StrictTriple Tip Nothing Tip
+        (Tip ())            -> StrictTriple (Tip ()) Nothing (Tip ())
         Bin _ kx x l r -> case compare k kx of
           LT -> let StrictTriple lt z gt = go k l
                     !gt' = link kx x gt r
@@ -3889,7 +3889,7 @@ splitMember k0 m = case go k0 m of
     go :: Ord k => k -> Map k a -> StrictTriple (Map k a) Bool (Map k a)
     go !k t =
       case t of
-        Tip            -> StrictTriple Tip False Tip
+        (Tip ())            -> StrictTriple (Tip ()) False (Tip ())
         Bin _ kx x l r -> case compare k kx of
           LT -> let StrictTriple lt z gt = go k l
                     !gt' = link kx x gt r
@@ -3930,8 +3930,8 @@ data StrictTriple a b c = StrictTriple !a !b !c
   Link
 --------------------------------------------------------------------}
 link :: k -> a -> Map k a -> Map k a -> Map k a
-link kx x Tip r  = insertMin kx x r
-link kx x l Tip  = insertMax kx x l
+link kx x (Tip ()) r  = insertMin kx x r
+link kx x l (Tip ())  = insertMax kx x l
 link kx x l@(Bin sizeL ky y ly ry) r@(Bin sizeR kz z lz rz)
   | delta*sizeL < sizeR  = balanceL kz z (link kx x l lz) rz
   | delta*sizeR < sizeL  = balanceR ky y ly (link kx x ry r)
@@ -3942,13 +3942,13 @@ link kx x l@(Bin sizeL ky y ly ry) r@(Bin sizeR kz z lz rz)
 insertMax,insertMin :: k -> a -> Map k a -> Map k a
 insertMax kx x t
   = case t of
-      Tip -> singleton kx x
+      (Tip ()) -> singleton kx x
       Bin _ ky y l r
           -> balanceR ky y l (insertMax kx x r)
 
 insertMin kx x t
   = case t of
-      Tip -> singleton kx x
+      (Tip ()) -> singleton kx x
       Bin _ ky y l r
           -> balanceL ky y (insertMin kx x l) r
 
@@ -3956,8 +3956,8 @@ insertMin kx x t
   [link2 l r]: merges two trees.
 --------------------------------------------------------------------}
 link2 :: Map k a -> Map k a -> Map k a
-link2 Tip r   = r
-link2 l Tip   = l
+link2 (Tip ()) r   = r
+link2 l (Tip ())   = l
 link2 l@(Bin sizeL kx x lx rx) r@(Bin sizeR ky y ly ry)
   | delta*sizeL < sizeR = balanceL ky y (link2 l ly) ry
   | delta*sizeR < sizeL = balanceR kx x lx (link2 rx r)
@@ -3968,8 +3968,8 @@ link2 l@(Bin sizeL kx x lx rx) r@(Bin sizeR ky y ly ry)
   Assumes that [l] and [r] are already balanced with respect to each other.
 --------------------------------------------------------------------}
 glue :: Map k a -> Map k a -> Map k a
-glue Tip r = r
-glue l Tip = l
+glue (Tip ()) r = r
+glue l (Tip ()) = l
 glue l@(Bin sl kl xl ll lr) r@(Bin sr kr xr rl rr)
   | sl > sr = let !(MaxView km m l') = maxViewSure kl xl ll lr in balanceR km m l' r
   | otherwise = let !(MinView km m r') = minViewSure kr xr rl rr in balanceL km m l r'
@@ -3980,7 +3980,7 @@ data MaxView k a = MaxView !k a !(Map k a)
 minViewSure :: k -> a -> Map k a -> Map k a -> MinView k a
 minViewSure = go
   where
-    go k x Tip r = MinView k x r
+    go k x (Tip ()) r = MinView k x r
     go k x (Bin _ kl xl ll lr) r =
       case go kl xl ll lr of
         MinView km xm l' -> MinView km xm (balanceR k x l' r)
@@ -3989,7 +3989,7 @@ minViewSure = go
 maxViewSure :: k -> a -> Map k a -> Map k a -> MaxView k a
 maxViewSure = go
   where
-    go k x l Tip = MaxView k x l
+    go k x l (Tip ()) = MaxView k x l
     go k x l (Bin _ kr xr rl rr) =
       case go kr xr rl rr of
         MaxView km xm r' -> MaxView km xm (balanceL k x l r')
@@ -4002,7 +4002,7 @@ maxViewSure = go
 
 deleteFindMin :: Map k a -> ((k,a),Map k a)
 deleteFindMin t = case minViewWithKey t of
-  Nothing -> (error "Map.deleteFindMin: can not return the minimal element of an empty map", Tip)
+  Nothing -> (error "Map.deleteFindMin: can not return the minimal element of an empty map", (Tip ()))
   Just res -> res
 
 -- | /O(log n)/. Delete and find the maximal element.
@@ -4012,7 +4012,7 @@ deleteFindMin t = case minViewWithKey t of
 
 deleteFindMax :: Map k a -> ((k,a),Map k a)
 deleteFindMax t = case maxViewWithKey t of
-  Nothing -> (error "Map.deleteFindMax: can not return the maximal element of an empty map", Tip)
+  Nothing -> (error "Map.deleteFindMax: can not return the maximal element of an empty map", (Tip ()))
   Just res -> res
 
 {--------------------------------------------------------------------
@@ -4085,23 +4085,23 @@ ratio = 2
 
 balance :: k -> a -> Map k a -> Map k a -> Map k a
 balance k x l r = case l of
-  Tip -> case r of
-           Tip -> Bin 1 k x Tip Tip
-           (Bin _ _ _ Tip Tip) -> Bin 2 k x Tip r
-           (Bin _ rk rx Tip rr@(Bin _ _ _ _ _)) -> Bin 3 rk rx (Bin 1 k x Tip Tip) rr
-           (Bin _ rk rx (Bin _ rlk rlx _ _) Tip) -> Bin 3 rlk rlx (Bin 1 k x Tip Tip) (Bin 1 rk rx Tip Tip)
+  (Tip ()) -> case r of
+           (Tip ()) -> Bin 1 k x (Tip ()) (Tip ())
+           (Bin _ _ _ (Tip ()) (Tip ())) -> Bin 2 k x (Tip ()) r
+           (Bin _ rk rx (Tip ()) rr@(Bin _ _ _ _ _)) -> Bin 3 rk rx (Bin 1 k x (Tip ()) (Tip ())) rr
+           (Bin _ rk rx (Bin _ rlk rlx _ _) (Tip ())) -> Bin 3 rlk rlx (Bin 1 k x (Tip ()) (Tip ())) (Bin 1 rk rx (Tip ()) (Tip ()))
            (Bin rs rk rx rl@(Bin rls rlk rlx rll rlr) rr@(Bin rrs _ _ _ _))
-             | rls < ratio*rrs -> Bin (1+rs) rk rx (Bin (1+rls) k x Tip rl) rr
-             | otherwise -> Bin (1+rs) rlk rlx (Bin (1+size rll) k x Tip rll) (Bin (1+rrs+size rlr) rk rx rlr rr)
+             | rls < ratio*rrs -> Bin (1+rs) rk rx (Bin (1+rls) k x (Tip ()) rl) rr
+             | otherwise -> Bin (1+rs) rlk rlx (Bin (1+size rll) k x (Tip ()) rll) (Bin (1+rrs+size rlr) rk rx rlr rr)
 
   (Bin ls lk lx ll lr) -> case r of
-           Tip -> case (ll, lr) of
-                    (Tip, Tip) -> Bin 2 k x l Tip
-                    (Tip, (Bin _ lrk lrx _ _)) -> Bin 3 lrk lrx (Bin 1 lk lx Tip Tip) (Bin 1 k x Tip Tip)
-                    ((Bin _ _ _ _ _), Tip) -> Bin 3 lk lx ll (Bin 1 k x Tip Tip)
+           (Tip ()) -> case (ll, lr) of
+                    ((Tip ()), (Tip ())) -> Bin 2 k x l (Tip ())
+                    ((Tip ()), (Bin _ lrk lrx _ _)) -> Bin 3 lrk lrx (Bin 1 lk lx (Tip ()) (Tip ())) (Bin 1 k x (Tip ()) (Tip ()))
+                    ((Bin _ _ _ _ _), (Tip ())) -> Bin 3 lk lx ll (Bin 1 k x (Tip ()) (Tip ()))
                     ((Bin lls _ _ _ _), (Bin lrs lrk lrx lrl lrr))
-                      | lrs < ratio*lls -> Bin (1+ls) lk lx ll (Bin (1+lrs) k x lr Tip)
-                      | otherwise -> Bin (1+ls) lrk lrx (Bin (1+lls+size lrl) lk lx ll lrl) (Bin (1+size lrr) k x lrr Tip)
+                      | lrs < ratio*lls -> Bin (1+ls) lk lx ll (Bin (1+lrs) k x lr (Tip ()))
+                      | otherwise -> Bin (1+ls) lrk lrx (Bin (1+lls+size lrl) lk lx ll lrl) (Bin (1+size lrr) k x lrr (Tip ()))
            (Bin rs rk rx rl rr)
               | rs > delta*ls  -> case (rl, rr) of
                    (Bin rls rlk rlx rll rlr, Bin rrs _ _ _ _)
@@ -4124,17 +4124,17 @@ balance k x l r = case l of
 -- right subtree might have been deleted from.
 balanceL :: k -> a -> Map k a -> Map k a -> Map k a
 balanceL k x l r = case r of
-  Tip -> case l of
-           Tip -> Bin 1 k x Tip Tip
-           (Bin _ _ _ Tip Tip) -> Bin 2 k x l Tip
-           (Bin _ lk lx Tip (Bin _ lrk lrx _ _)) -> Bin 3 lrk lrx (Bin 1 lk lx Tip Tip) (Bin 1 k x Tip Tip)
-           (Bin _ lk lx ll@(Bin _ _ _ _ _) Tip) -> Bin 3 lk lx ll (Bin 1 k x Tip Tip)
+  (Tip ()) -> case l of
+           (Tip ()) -> Bin 1 k x (Tip ()) (Tip ())
+           (Bin _ _ _ (Tip ()) (Tip ())) -> Bin 2 k x l (Tip ())
+           (Bin _ lk lx (Tip ()) (Bin _ lrk lrx _ _)) -> Bin 3 lrk lrx (Bin 1 lk lx (Tip ()) (Tip ())) (Bin 1 k x (Tip ()) (Tip ()))
+           (Bin _ lk lx ll@(Bin _ _ _ _ _) (Tip ())) -> Bin 3 lk lx ll (Bin 1 k x (Tip ()) (Tip ()))
            (Bin ls lk lx ll@(Bin lls _ _ _ _) lr@(Bin lrs lrk lrx lrl lrr))
-             | lrs < ratio*lls -> Bin (1+ls) lk lx ll (Bin (1+lrs) k x lr Tip)
-             | otherwise -> Bin (1+ls) lrk lrx (Bin (1+lls+size lrl) lk lx ll lrl) (Bin (1+size lrr) k x lrr Tip)
+             | lrs < ratio*lls -> Bin (1+ls) lk lx ll (Bin (1+lrs) k x lr (Tip ()))
+             | otherwise -> Bin (1+ls) lrk lrx (Bin (1+lls+size lrl) lk lx ll lrl) (Bin (1+size lrr) k x lrr (Tip ()))
 
   (Bin rs _ _ _ _) -> case l of
-           Tip -> Bin (1+rs) k x Tip r
+           (Tip ()) -> Bin (1+rs) k x (Tip ()) r
 
            (Bin ls lk lx ll lr)
               | ls > delta*rs  -> case (ll, lr) of
@@ -4149,17 +4149,17 @@ balanceL k x l r = case r of
 -- left subtree might have been deleted from.
 balanceR :: k -> a -> Map k a -> Map k a -> Map k a
 balanceR k x l r = case l of
-  Tip -> case r of
-           Tip -> Bin 1 k x Tip Tip
-           (Bin _ _ _ Tip Tip) -> Bin 2 k x Tip r
-           (Bin _ rk rx Tip rr@(Bin _ _ _ _ _)) -> Bin 3 rk rx (Bin 1 k x Tip Tip) rr
-           (Bin _ rk rx (Bin _ rlk rlx _ _) Tip) -> Bin 3 rlk rlx (Bin 1 k x Tip Tip) (Bin 1 rk rx Tip Tip)
+  (Tip ()) -> case r of
+           (Tip ()) -> Bin 1 k x (Tip ()) (Tip ())
+           (Bin _ _ _ (Tip ()) (Tip ())) -> Bin 2 k x (Tip ()) r
+           (Bin _ rk rx (Tip ()) rr@(Bin _ _ _ _ _)) -> Bin 3 rk rx (Bin 1 k x (Tip ()) (Tip ())) rr
+           (Bin _ rk rx (Bin _ rlk rlx _ _) (Tip ())) -> Bin 3 rlk rlx (Bin 1 k x (Tip ()) (Tip ())) (Bin 1 rk rx (Tip ()) (Tip ()))
            (Bin rs rk rx rl@(Bin rls rlk rlx rll rlr) rr@(Bin rrs _ _ _ _))
-             | rls < ratio*rrs -> Bin (1+rs) rk rx (Bin (1+rls) k x Tip rl) rr
-             | otherwise -> Bin (1+rs) rlk rlx (Bin (1+size rll) k x Tip rll) (Bin (1+rrs+size rlr) rk rx rlr rr)
+             | rls < ratio*rrs -> Bin (1+rs) rk rx (Bin (1+rls) k x (Tip ()) rl) rr
+             | otherwise -> Bin (1+rs) rlk rlx (Bin (1+size rll) k x (Tip ()) rll) (Bin (1+rrs+size rlr) rk rx rlr rr)
 
   (Bin ls _ _ _ _) -> case r of
-           Tip -> Bin (1+ls) k x l Tip
+           (Tip ()) -> Bin (1+ls) k x l (Tip ())
 
            (Bin rs rk rx rl rr)
               | rs > delta*ls  -> case (rl, rr) of
@@ -4245,7 +4245,7 @@ instance (Ord k, Read k) => Read1 (Map k) where
 instance Functor (Map k) where
   fmap f m  = map f m
 #ifdef __GLASGOW_HASKELL__
-  _ <$ Tip = Tip
+  _ <$ (Tip ()) = Tip ()
   a <$ (Bin sx kx _ l r) = Bin sx kx a (a <$ l) (a <$ r)
 #endif
 
@@ -4257,7 +4257,7 @@ instance Traversable (Map k) where
 -- | Folds in order of increasing key.
 instance Foldable.Foldable (Map k) where
   fold = go
-    where go Tip = mempty
+    where go (Tip ()) = mempty
           go (Bin 1 _ v _ _) = v
           go (Bin _ _ v l r) = go l `mappend` (v `mappend` go r)
   {-# INLINABLE fold #-}
@@ -4266,7 +4266,7 @@ instance Foldable.Foldable (Map k) where
   foldl = foldl
   {-# INLINE foldl #-}
   foldMap f t = go t
-    where go Tip = mempty
+    where go (Tip ()) = mempty
           go (Bin 1 _ v _ _) = f v
           go (Bin _ _ v l r) = go l `mappend` (f v `mappend` go r)
   {-# INLINE foldMap #-}
@@ -4282,21 +4282,21 @@ instance Foldable.Foldable (Map k) where
   toList = elems -- NB: Foldable.toList /= Map.toList
   {-# INLINE toList #-}
   elem = go
-    where go !_ Tip = False
+    where go !_ (Tip ()) = False
           go x (Bin _ _ v l r) = x == v || go x l || go x r
   {-# INLINABLE elem #-}
   maximum = start
-    where start Tip = error "Data.Foldable.maximum (for Data.Map): empty map"
+    where start (Tip ()) = error "Data.Foldable.maximum (for Data.Map): empty map"
           start (Bin _ _ v l r) = go (go v l) r
 
-          go !m Tip = m
+          go !m (Tip ()) = m
           go m (Bin _ _ v l r) = go (go (max m v) l) r
   {-# INLINABLE maximum #-}
   minimum = start
-    where start Tip = error "Data.Foldable.minimum (for Data.Map): empty map"
+    where start (Tip ()) = error "Data.Foldable.minimum (for Data.Map): empty map"
           start (Bin _ _ v l r) = go (go v l) r
 
-          go !m Tip = m
+          go !m (Tip ()) = m
           go m (Bin _ _ v l r) = go (go (min m v) l) r
   {-# INLINABLE minimum #-}
   sum = foldl' (+) 0
@@ -4309,27 +4309,27 @@ instance Foldable.Foldable (Map k) where
 -- | @since 0.6.3.1
 instance Bifoldable Map where
   bifold = go
-    where go Tip = mempty
+    where go (Tip ()) = mempty
           go (Bin 1 k v _ _) = k `mappend` v
           go (Bin _ k v l r) = go l `mappend` (k `mappend` (v `mappend` go r))
   {-# INLINABLE bifold #-}
   bifoldr f g z = go z
-    where go z' Tip             = z'
+    where go z' (Tip ())             = z'
           go z' (Bin _ k v l r) = go (f k (g v (go z' r))) l
   {-# INLINE bifoldr #-}
   bifoldl f g z = go z
-    where go z' Tip             = z'
+    where go z' (Tip ())             = z'
           go z' (Bin _ k v l r) = go (g (f (go z' l) k) v) r
   {-# INLINE bifoldl #-}
   bifoldMap f g t = go t
-    where go Tip = mempty
+    where go (Tip ()) = mempty
           go (Bin 1 k v _ _) = f k `mappend` g v
           go (Bin _ k v l r) = go l `mappend` (f k `mappend` (g v `mappend` go r))
   {-# INLINE bifoldMap #-}
 #endif
 
 instance (NFData k, NFData a) => NFData (Map k a) where
-    rnf Tip = ()
+    rnf (Tip ()) = ()
     rnf (Bin _ kx x l r) = rnf kx `seq` rnf x `seq` rnf l `seq` rnf r
 
 {--------------------------------------------------------------------
@@ -4390,6 +4390,6 @@ INSTANCE_TYPEABLE2(Map)
 splitRoot :: Map k b -> [Map k b]
 splitRoot orig =
   case orig of
-    Tip           -> []
+    (Tip ())           -> []
     Bin _ k v l r -> [l, singleton k v, r]
 {-# INLINE splitRoot #-}

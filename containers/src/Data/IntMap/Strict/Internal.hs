@@ -378,7 +378,7 @@ findWithDefault def !k = go
                      | otherwise = go r
     go (Tip kx x) | k == kx   = x
                   | otherwise = def
-    go Nil = def
+    go (Nil ()) = def
 
 {--------------------------------------------------------------------
   Construction
@@ -415,7 +415,7 @@ insert !k !x t =
     Tip ky _
       | k==ky         -> Tip k x
       | otherwise     -> link k (Tip k x) ky t
-    Nil -> Tip k x
+    (Nil ()) -> Tip k x
 
 -- right-biased insertion, used by 'union'
 -- | /O(min(n,W))/. Insert with a combining function.
@@ -456,7 +456,7 @@ insertWithKey f !k x t =
     Tip ky y
       | k==ky         -> Tip k $! f k x y
       | otherwise     -> link k (singleton k x) ky t
-    Nil -> singleton k x
+    (Nil ()) -> singleton k x
 
 -- | /O(min(n,W))/. The expression (@'insertLookupWithKey' f k x map@)
 -- is a pair where the first element is equal to (@'lookup' k map@)
@@ -485,7 +485,7 @@ insertLookupWithKey f0 !k0 x0 t0 = toPair $ go f0 k0 x0 t0
         Tip ky y
           | k==ky         -> (Just y :*: (Tip k $! f k x y))
           | otherwise     -> (Nothing :*: link k (singleton k x) ky t)
-        Nil -> Nothing :*: (singleton k x)
+        (Nil ()) -> Nothing :*: (singleton k x)
 
 
 {--------------------------------------------------------------------
@@ -520,7 +520,7 @@ adjustWithKey f !k t =
     Tip ky y
       | k==ky         -> Tip ky $! f k y
       | otherwise     -> t
-    Nil -> Nil
+    (Nil ()) -> (Nil ())
 
 -- | /O(min(n,W))/. The expression (@'update' f k map@) updates the value @x@
 -- at @k@ (if it is in the map). If (@f x@) is 'Nothing', the element is
@@ -554,9 +554,9 @@ updateWithKey f !k t =
     Tip ky y
       | k==ky         -> case f k y of
                            Just !y' -> Tip ky y'
-                           Nothing -> Nil
+                           Nothing -> (Nil ())
       | otherwise     -> t
-    Nil -> Nil
+    (Nil ()) -> (Nil ())
 
 -- | /O(min(n,W))/. Lookup and update.
 -- The function returns original value, if it is updated.
@@ -580,9 +580,9 @@ updateLookupWithKey f0 !k0 t0 = toPair $ go f0 k0 t0
         Tip ky y
           | k==ky         -> case f k y of
                                Just !y' -> (Just y :*: Tip ky y')
-                               Nothing  -> (Just y :*: Nil)
+                               Nothing  -> (Just y :*: (Nil ()))
           | otherwise     -> (Nothing :*: t)
-        Nil -> (Nothing :*: Nil)
+        (Nil ()) -> (Nothing :*: (Nil ()))
 
 
 
@@ -601,13 +601,13 @@ alter f !k t =
     Tip ky y
       | k==ky         -> case f (Just y) of
                            Just !x -> Tip ky x
-                           Nothing -> Nil
+                           Nothing -> (Nil ())
       | otherwise     -> case f Nothing of
                            Just !x -> link k (Tip k x) ky t
                            Nothing -> t
-    Nil               -> case f Nothing of
+    (Nil ())               -> case f Nothing of
                            Just !x -> Tip k x
-                           Nothing -> Nil
+                           Nothing -> (Nil ())
 
 -- | /O(log n)/. The expression (@'alterF' f k map@) alters the value @x@ at
 -- @k@, or absence thereof.  'alterF' can be used to inspect, insert, delete,
@@ -701,7 +701,7 @@ differenceWith f m1 m2
 
 differenceWithKey :: (Key -> a -> b -> Maybe a) -> IntMap a -> IntMap b -> IntMap a
 differenceWithKey f m1 m2
-  = mergeWithKey f id (const Nil) m1 m2
+  = mergeWithKey f id (const (Nil ())) m1 m2
 
 {--------------------------------------------------------------------
   Intersection
@@ -722,7 +722,7 @@ intersectionWith f m1 m2
 
 intersectionWithKey :: (Key -> a -> b -> c) -> IntMap a -> IntMap b -> IntMap c
 intersectionWithKey f m1 m2
-  = mergeWithKey' bin (\(Tip k1 x1) (Tip _k2 x2) -> Tip k1 $! f k1 x1 x2) (const Nil) (const Nil) m1 m2
+  = mergeWithKey' bin (\(Tip k1 x1) (Tip _k2 x2) -> Tip k1 $! f k1 x1 x2) (const (Nil ())) (const (Nil ())) m1 m2
 
 {--------------------------------------------------------------------
   MergeWithKey
@@ -768,7 +768,7 @@ mergeWithKey :: (Key -> a -> b -> Maybe c) -> (IntMap a -> IntMap c) -> (IntMap 
              -> IntMap a -> IntMap b -> IntMap c
 mergeWithKey f g1 g2 = mergeWithKey' bin combine g1 g2
   where -- We use the lambda form to avoid non-exhaustive pattern matches warning.
-        combine = \(Tip k1 x1) (Tip _k2 x2) -> case f k1 x1 x2 of Nothing -> Nil
+        combine = \(Tip k1 x1) (Tip _k2 x2) -> case f k1 x1 x2 of Nothing -> (Nil ())
                                                                   Just !x -> Tip k1 x
         {-# INLINE combine #-}
 {-# INLINE mergeWithKey #-}
@@ -790,8 +790,8 @@ updateMinWithKey f t =
     go f' (Bin p m l r) = binCheckLeft p m (go f' l) r
     go f' (Tip k y) = case f' k y of
                         Just !y' -> Tip k y'
-                        Nothing -> Nil
-    go _ Nil = error "updateMinWithKey Nil"
+                        Nothing -> (Nil ())
+    go _ (Nil ()) = error "updateMinWithKey (Nil ())"
 
 -- | /O(log n)/. Update the value at the maximal key.
 --
@@ -806,8 +806,8 @@ updateMaxWithKey f t =
     go f' (Bin p m l r) = binCheckRight p m l (go f' r)
     go f' (Tip k y) = case f' k y of
                         Just !y' -> Tip k y'
-                        Nothing -> Nil
-    go _ Nil = error "updateMaxWithKey Nil"
+                        Nothing -> (Nil ())
+    go _ (Nil ()) = error "updateMaxWithKey (Nil ())"
 
 -- | /O(log n)/. Update the value at the maximal key.
 --
@@ -838,7 +838,7 @@ map f = go
   where
     go (Bin p m l r) = Bin p m (go l) (go r)
     go (Tip k x)     = Tip k $! f x
-    go Nil           = Nil
+    go (Nil ())           = Nil ()
 
 #ifdef __GLASGOW_HASKELL__
 {-# NOINLINE [1] map #-}
@@ -858,7 +858,7 @@ mapWithKey f t
   = case t of
       Bin p m l r -> Bin p m (mapWithKey f l) (mapWithKey f r)
       Tip k x     -> Tip k $! f k x
-      Nil         -> Nil
+      (Nil ())         -> (Nil ())
 
 #ifdef __GLASGOW_HASKELL__
 -- Pay close attention to strictness here. We need to force the
@@ -870,7 +870,7 @@ mapWithKey f t
 -- for this, and we'd have to pay attention to simplifier phases. Something like
 --
 -- lsmap :: (b -> c) -> (a -> b) -> IntMap a -> IntMap c
--- lsmap _ _ Nil = Nil
+-- lsmap _ _ (Nil ()) = Nil ()
 -- lsmap f g (Tip k x) = let !gx = g x in Tip k (f gx)
 -- lsmap f g (Bin p m l r) = Bin p m (lsmap f g l) (lsmap f g r)
 {-# NOINLINE [1] mapWithKey #-}
@@ -900,7 +900,7 @@ mapWithKey f t
 traverseWithKey :: Applicative t => (Key -> a -> t b) -> IntMap a -> t (IntMap b)
 traverseWithKey f = go
   where
-    go Nil = pure Nil
+    go (Nil ()) = pure (Nil ())
     go (Tip k v) = (\ !v' -> Tip k v') <$> f k v
     go (Bin p m l r)
       | m < 0     = liftA2 (flip (Bin p m)) (go r) (go l)
@@ -914,8 +914,8 @@ traverseMaybeWithKey
   :: Applicative f => (Key -> a -> f (Maybe b)) -> IntMap a -> f (IntMap b)
 traverseMaybeWithKey f = go
     where
-    go Nil           = pure Nil
-    go (Tip k x)     = maybe Nil (Tip k $!) <$> f k x
+    go (Nil ())           = pure (Nil ())
+    go (Tip k x)     = maybe (Nil ()) (Tip k $!) <$> f k x
     go (Bin p m l r)
       | m < 0     = liftA2 (flip (bin p m)) (go r) (go l)
       | otherwise = liftA2 (bin p m) (go l) (go r)
@@ -958,7 +958,7 @@ mapAccumL f0 a0 t0 = toPair $ go f0 a0 t0
                     (a2 :*: r') = go f a1 r
                 in (a2 :*: Bin p m l' r')
           Tip k x     -> let !(a',!x') = f a k x in (a' :*: Tip k x')
-          Nil         -> (a :*: Nil)
+          (Nil ())         -> (a :*: (Nil ()))
 
 -- | /O(n)/. The function @'mapAccumRWithKey'@ threads an accumulating
 -- argument through the map in descending order of keys.
@@ -977,7 +977,7 @@ mapAccumRWithKey f0 a0 t0 = toPair $ go f0 a0 t0
                   (a2 :*: l') = go f a1 l
               in (a2 :*: Bin p m l' r')
           Tip k x     -> let !(a',!x') = f a k x in (a' :*: Tip k x')
-          Nil         -> (a :*: Nil)
+          (Nil ())         -> (a :*: (Nil ()))
 
 -- | /O(n*log n)/.
 -- @'mapKeysWith' c f s@ is the map obtained by applying @f@ to each key of @s@.
@@ -1013,8 +1013,8 @@ mapMaybeWithKey f (Bin p m l r)
   = bin p m (mapMaybeWithKey f l) (mapMaybeWithKey f r)
 mapMaybeWithKey f (Tip k x) = case f k x of
   Just !y  -> Tip k y
-  Nothing -> Nil
-mapMaybeWithKey _ Nil = Nil
+  Nothing -> (Nil ())
+mapMaybeWithKey _ (Nil ()) = Nil ()
 
 -- | /O(n)/. Map values and separate the 'Left' and 'Right' results.
 --
@@ -1047,9 +1047,9 @@ mapEitherWithKey f0 t0 = toPair $ go f0 t0
         (l1 :*: l2) = go f l
         (r1 :*: r2) = go f r
     go f (Tip k x) = case f k x of
-      Left !y  -> (Tip k y :*: Nil)
-      Right !z -> (Nil :*: Tip k z)
-    go _ Nil = (Nil :*: Nil)
+      Left !y  -> (Tip k y :*: (Nil ()))
+      Right !z -> ((Nil ()) :*: Tip k z)
+    go _ (Nil ()) = ((Nil ()) :*: (Nil ()))
 
 {--------------------------------------------------------------------
   Conversions
@@ -1062,7 +1062,7 @@ mapEitherWithKey f0 t0 = toPair $ go f0 t0
 -- > fromSet undefined Data.IntSet.empty == empty
 
 fromSet :: (Key -> a) -> IntSet.IntSet -> IntMap a
-fromSet _ IntSet.Nil = Nil
+fromSet _ (IntSet.Nil ()) = Nil ()
 fromSet f (IntSet.Bin p m l r) = Bin p m (fromSet f l) (fromSet f r)
 fromSet f (IntSet.Tip kx bm) = buildTree f kx bm (IntSet.suffixBitMask + 1)
   where -- This is slightly complicated, as we to convert the dense
@@ -1167,7 +1167,7 @@ fromDistinctAscList = fromMonoListWithKey Distinct (\_ x _ -> x)
 fromMonoListWithKey :: Distinct -> (Key -> a -> a -> a) -> [(Key,a)] -> IntMap a
 fromMonoListWithKey distinct f = go
   where
-    go []              = Nil
+    go []              = Nil ()
     go ((kx,vx) : zs1) = addAll' kx vx zs1
 
     -- `addAll'` collects all keys equal to `kx` into a single value,
