@@ -181,3 +181,6 @@ module Data.Set (
             ) where
 
 import Data.Set.Internal as S
+
+newtype Set a = Set (Set' Maybe a)
+--newtype NonEmptySet a = NonEmptySet (Set' Identity a)

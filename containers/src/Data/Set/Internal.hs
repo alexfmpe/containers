@@ -1,6 +1,10 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE ExplicitForAll #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE PatternGuards #-}
+{-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 #if !defined(TESTING) && defined(__GLASGOW_HASKELL__)
 {-# LANGUAGE Trustworthy #-}
 #endif
@@ -9,6 +13,7 @@
 {-# LANGUAGE RoleAnnotations #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 #endif
 
 {-# OPTIONS_HADDOCK not-home #-}
@@ -123,7 +128,7 @@
 
 module Data.Set.Internal (
             -- * Set type
-              Set(..)       -- instance Eq,Ord,Show,Read,Data
+              Set'(..)       -- instance Eq,Ord,Show,Read,Data
             , Size
 
             -- * Operators
@@ -247,6 +252,7 @@ import Data.Semigroup (stimesIdempotentMonoid, stimesIdempotent)
 import Data.Functor.Classes
 import Data.Functor.Identity (Identity)
 import qualified Data.Foldable as Foldable
+import Data.Void
 import Control.DeepSeq (NFData(rnf))
 
 import Utils.Containers.Internal.StrictPair
@@ -282,30 +288,41 @@ m1 \\ m2 = difference m1 m2
 -- | A set of values @a@.
 
 -- See Note: Order of constructors
-data Set a    = Bin {-# UNPACK #-} !Size !a !(Set a) !(Set a)
-              | Tip
+data Set' (e :: * -> *) a
+  = Bin {-# UNPACK #-} !Size !a !(Set' Maybe a) !(Set' Maybe a)
+  | Tip' (e Void)
+
+type Set = Set' Maybe
+
+{-# COMPLETE Bin, Tip #-}
+pattern Tip :: Set' Maybe a
+pattern Tip = Tip' Nothing
 
 type Size     = Int
 
 #ifdef __GLASGOW_HASKELL__
-type role Set nominal
+type role Set' nominal nominal
 #endif
 
 -- | @since 0.6.6
 deriving instance Lift a => Lift (Set a)
 
-instance Ord a => Monoid (Set a) where
+instance Ord a => Monoid (Set' Maybe a) where
     mempty  = empty
     mconcat = unions
     mappend = (<>)
 
 -- | @since 0.5.7
-instance Ord a => Semigroup (Set a) where
+instance Ord a => Semigroup (Set' Maybe a) where
     (<>)    = union
     stimes  = stimesIdempotentMonoid
 
+instance Ord a => Semigroup (Set' Identity a) where
+    (<>)    = union
+    stimes  = stimesIdempotent
+
 -- | Folds in order of increasing key.
-instance Foldable.Foldable Set where
+instance Foldable.Foldable (Set' Maybe) where
     fold = go
       where go Tip = mempty
             go (Bin 1 k _ _) = k
@@ -352,7 +369,7 @@ instance Foldable.Foldable Set where
 -- This instance preserves data abstraction at the cost of inefficiency.
 -- We provide limited reflection services for the sake of data abstraction.
 
-instance (Data a, Ord a) => Data (Set a) where
+instance (Data a, Ord a) => Data (Set' Maybe a) where
   gfoldl f z set = z fromList `f` (toList set)
   toConstr _     = fromListConstr
   gunfold k z c  = case constrIndex c of
@@ -372,23 +389,26 @@ setDataType = mkDataType "Data.Set.Internal.Set" [fromListConstr]
 {--------------------------------------------------------------------
   Query
 --------------------------------------------------------------------}
+
+
 -- | \(O(1)\). Is this the empty set?
-null :: Set a -> Bool
+null :: Set' Maybe a -> Bool
 null Tip      = True
 null (Bin {}) = False
 {-# INLINE null #-}
 
 -- | \(O(1)\). The number of elements in the set.
-size :: Set a -> Int
-size Tip = 0
+size :: Set' e a -> Int
+size (Tip' _) = 0
 size (Bin sz _ _ _) = sz
 {-# INLINE size #-}
 
 -- | \(O(\log n)\). Is the element in the set?
-member :: Ord a => a -> Set a -> Bool
+member :: forall a e. Ord a => a -> Set' e a -> Bool
 member = go
   where
-    go !_ Tip = False
+    go :: a -> Set' e' a -> Bool
+    go !_ (Tip' _) = False
     go x (Bin _ y l r) = case compare x y of
       LT -> go x l
       GT -> go x r
@@ -400,7 +420,7 @@ member = go
 #endif
 
 -- | \(O(\log n)\). Is the element not in the set?
-notMember :: Ord a => a -> Set a -> Bool
+notMember :: Ord a => a -> Set' e a -> Bool
 notMember a t = not $ member a t
 #if __GLASGOW_HASKELL__
 {-# INLINABLE notMember #-}
@@ -498,15 +518,26 @@ lookupGE = goNothing
   Construction
 --------------------------------------------------------------------}
 -- | \(O(1)\). The empty set.
-empty  :: Set a
+empty  :: Set' Maybe a
 empty = Tip
 {-# INLINE empty #-}
 
 -- | \(O(1)\). Create a singleton set.
-singleton :: a -> Set a
+singleton :: a -> Set' e a
 singleton x = Bin 1 x Tip Tip
 {-# INLINE singleton #-}
 
+emptiable :: Set' Identity a -> Set' Maybe a
+emptiable a = case a of
+  Tip' _ -> Tip
+  Bin s x l r -> Bin s x l r
+{-# INLINE emptiable #-}
+
+nonEmpty :: Set' Maybe a -> Maybe (Set' Identity a)
+nonEmpty a = case a of
+  Tip -> Nothing
+  Bin s x l r -> Just (Bin s x l r)
+{-# INLINE nonEmpty #-}
 {--------------------------------------------------------------------
   Insertion, Deletion
 --------------------------------------------------------------------}
@@ -765,12 +796,12 @@ lookupMinSure _ (Bin _ x l _) = lookupMinSure x l
 --
 -- @since 0.5.9
 
-lookupMin :: Set a -> Maybe a
-lookupMin Tip = Nothing
+lookupMin :: Set' e a -> e a
+lookupMin (Tip' x) = x --Nothing
 lookupMin (Bin _ x l _) = Just $! lookupMinSure x l
 
 -- | \(O(\log n)\). The minimal element of a set.
-findMin :: Set a -> a
+findMin :: Set' Maybe a -> a
 findMin t
   | Just r <- lookupMin t = r
   | otherwise = error "Set.findMin: empty set has no minimal element"
@@ -783,12 +814,12 @@ lookupMaxSure _ (Bin _ x _ r) = lookupMaxSure x r
 --
 -- @since 0.5.9
 
-lookupMax :: Set a -> Maybe a
+lookupMax :: Set' e a -> e a
 lookupMax Tip = Nothing
 lookupMax (Bin _ x _ r) = Just $! lookupMaxSure x r
 
 -- | \(O(\log n)\). The maximal element of a set.
-findMax :: Set a -> a
+findMax :: Set' Maybe a -> a
 findMax t
   | Just r <- lookupMax t = r
   | otherwise = error "Set.findMax: empty set has no maximal element"
@@ -809,7 +840,7 @@ deleteMax Tip             = Tip
   Union.
 --------------------------------------------------------------------}
 -- | The union of the sets in a Foldable structure : (@'unions' == 'foldl' 'union' 'empty'@).
-unions :: (Foldable f, Ord a) => f (Set a) -> Set a
+unions :: (Foldable f, Ord a) => f (Set' Maybe a) -> Set' Maybe a
 unions = Foldable.foldl' union empty
 #if __GLASGOW_HASKELL__
 {-# INLINABLE unions #-}
@@ -817,7 +848,7 @@ unions = Foldable.foldl' union empty
 
 -- | \(O\bigl(m \log\bigl(\frac{n+1}{m+1}\bigr)\bigr), \; m \leq n\). The union of two sets, preferring the first set when
 -- equal elements are encountered.
-union :: Ord a => Set a -> Set a -> Set a
+union :: Ord a => Set' e a -> Set' e a -> Set' e a
 union t1 Tip  = t1
 union t1 (Bin 1 x _ _) = insertR x t1
 union (Bin 1 x _ _) t2 = insert x t2
@@ -969,7 +1000,7 @@ mapMonotonic f (Bin sz x l r) = Bin sz (f x) (mapMonotonic f l) (mapMonotonic f 
 -- for compatibility only.
 --
 -- /Please note that fold will be deprecated in the future and removed./
-fold :: (a -> b -> b) -> b -> Set a -> b
+fold :: (a -> b -> b) -> b -> Set' Maybe a -> b
 fold = foldr
 {-# INLINE fold #-}
 
@@ -979,7 +1010,7 @@ fold = foldr
 -- For example,
 --
 -- > toAscList set = foldr (:) [] set
-foldr :: (a -> b -> b) -> b -> Set a -> b
+foldr :: (a -> b -> b) -> b -> Set' Maybe a -> b
 foldr f z = go z
   where
     go z' Tip           = z'
@@ -989,7 +1020,7 @@ foldr f z = go z
 -- | \(O(n)\). A strict version of 'foldr'. Each application of the operator is
 -- evaluated before using the result in the next application. This
 -- function is strict in the starting value.
-foldr' :: (a -> b -> b) -> b -> Set a -> b
+foldr' :: (a -> b -> b) -> b -> Set' Maybe a -> b
 foldr' f z = go z
   where
     go !z' Tip           = z'
@@ -1002,7 +1033,7 @@ foldr' f z = go z
 -- For example,
 --
 -- > toDescList set = foldl (flip (:)) [] set
-foldl :: (a -> b -> a) -> a -> Set b -> a
+foldl :: (a -> b -> a) -> a -> Set' Maybe b -> a
 foldl f z = go z
   where
     go z' Tip           = z'
@@ -1012,7 +1043,7 @@ foldl f z = go z
 -- | \(O(n)\). A strict version of 'foldl'. Each application of the operator is
 -- evaluated before using the result in the next application. This
 -- function is strict in the starting value.
-foldl' :: (a -> b -> a) -> a -> Set b -> a
+foldl' :: (a -> b -> a) -> a -> Set' Maybe b -> a
 foldl' f z = go z
   where
     go !z' Tip           = z'
@@ -1042,7 +1073,7 @@ instance (Ord a) => GHCExts.IsList (Set a) where
 #endif
 
 -- | \(O(n)\). Convert the set to a list of elements. Subject to list fusion.
-toList :: Set a -> [a]
+toList :: Set' e a -> [a]
 toList = toAscList
 
 -- | \(O(n)\). Convert the set to an ascending list of elements. Subject to list fusion.
@@ -1089,7 +1120,7 @@ foldlFB = foldl
 
 -- For some reason, when 'singleton' is used in fromList or in
 -- create, it is not inlined, so we inline it manually.
-fromList :: Ord a => [a] -> Set a
+fromList :: Ord a => [a] -> Set' Maybe a
 fromList [] = Tip
 fromList [x] = Bin 1 x Tip Tip
 fromList (x0 : xs0) | not_ordered x0 xs0 = fromList' (Bin 1 x0 Tip Tip) xs0
