@@ -393,7 +393,7 @@ import Utils.Containers.Internal.Prelude hiding
 import Prelude ()
 
 import qualified Data.Set.Internal as Set
-import Data.Set.Internal (Set)
+import Data.Set.Internal (Set')
 import Utils.Containers.Internal.PtrEquality (ptrEq)
 import Utils.Containers.Internal.StrictPair
 import Utils.Containers.Internal.StrictMaybe
@@ -1914,9 +1914,9 @@ difference t1 (Bin _ k _ l2 r2) = case split k t1 of
 --
 -- @since 0.5.8
 
-withoutKeys :: Ord k => Map k a -> Set k -> Map k a
+withoutKeys :: Ord k => Map k a -> Set' () k -> Map k a
 withoutKeys Tip _ = Tip
-withoutKeys m Set.Tip = m
+withoutKeys m Set.Tip_ = m
 withoutKeys m (Set.Bin _ k ls rs) = case splitMember k m of
   (lm, b, rm)
      | not b && lm' `ptrEq` lm && rm' `ptrEq` rm -> m
@@ -1995,9 +1995,9 @@ intersection t1@(Bin _ k x l1 r1) t2
 -- @
 --
 -- @since 0.5.8
-restrictKeys :: Ord k => Map k a -> Set k -> Map k a
+restrictKeys :: Ord k => Map k a -> Set' () k -> Map k a
 restrictKeys Tip _ = Tip
-restrictKeys _ Set.Tip = Tip
+restrictKeys _ Set.Tip_ = Tip
 restrictKeys m@(Bin _ k x l1 r1) s
   | b = if l1l2 `ptrEq` l1 && r1r2 `ptrEq` r1
         then m
@@ -3367,7 +3367,7 @@ assocs m
 -- > keysSet (fromList [(5,"a"), (3,"b")]) == Data.Set.fromList [3,5]
 -- > keysSet empty == Data.Set.empty
 
-keysSet :: Map k a -> Set.Set k
+keysSet :: Map k a -> Set.Set' () k
 keysSet Tip = Set.Tip
 keysSet (Bin sz kx _ l r) = Set.Bin sz kx (keysSet l) (keysSet r)
 
@@ -3376,7 +3376,7 @@ keysSet (Bin sz kx _ l r) = Set.Bin sz kx (keysSet l) (keysSet r)
 -- > argSet (fromList [(5,"a"), (3,"b")]) == Data.Set.fromList [Arg 3 "b",Arg 5 "a"]
 -- > argSet empty == Data.Set.empty
 
-argSet :: Map k a -> Set.Set (Arg k a)
+argSet :: Map k a -> Set.Set' () (Arg k a)
 argSet Tip = Set.Tip
 argSet (Bin sz kx x l r) = Set.Bin sz (Arg kx x) (argSet l) (argSet r)
 
@@ -3386,8 +3386,8 @@ argSet (Bin sz kx x l r) = Set.Bin sz (Arg kx x) (argSet l) (argSet r)
 -- > fromSet (\k -> replicate k 'a') (Data.Set.fromList [3, 5]) == fromList [(5,"aaaaa"), (3,"aaa")]
 -- > fromSet undefined Data.Set.empty == empty
 
-fromSet :: (k -> a) -> Set.Set k -> Map k a
-fromSet _ Set.Tip = Tip
+fromSet :: (k -> a) -> Set.Set' () k -> Map k a
+fromSet _ Set.Tip_ = Tip
 fromSet f (Set.Bin sz x l r) = Bin sz x (f x) (fromSet f l) (fromSet f r)
 
 -- | \(O(n)\). Build a map from a set of elements contained inside 'Arg's.
@@ -3395,8 +3395,8 @@ fromSet f (Set.Bin sz x l r) = Bin sz x (f x) (fromSet f l) (fromSet f r)
 -- > fromArgSet (Data.Set.fromList [Arg 3 "aaa", Arg 5 "aaaaa"]) == fromList [(5,"aaaaa"), (3,"aaa")]
 -- > fromArgSet Data.Set.empty == empty
 
-fromArgSet :: Set.Set (Arg k a) -> Map k a
-fromArgSet Set.Tip = Tip
+fromArgSet :: Set.Set' () (Arg k a) -> Map k a
+fromArgSet Set.Tip_ = Tip
 fromArgSet (Set.Bin sz (Arg x v) l r) = Bin sz x v (fromArgSet l) (fromArgSet r)
 
 {--------------------------------------------------------------------

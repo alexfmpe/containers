@@ -1475,7 +1475,7 @@ mapKeysWith c f = fromListWith c . foldrWithKey (\k x xs -> (f k, x) : xs) []
 -- > fromSet (\k -> replicate k 'a') (Data.Set.fromList [3, 5]) == fromList [(5,"aaaaa"), (3,"aaa")]
 -- > fromSet undefined Data.Set.empty == empty
 
-fromSet :: (k -> a) -> Set.Set k -> Map k a
+fromSet :: (k -> a) -> Set.Set' () k -> Map k a
 fromSet _ Set.Tip = Tip
 fromSet f (Set.Bin sz x l r) = case f x of v -> v `seq` Bin sz x v (fromSet f l) (fromSet f r)
 
@@ -1484,7 +1484,7 @@ fromSet f (Set.Bin sz x l r) = case f x of v -> v `seq` Bin sz x v (fromSet f l)
 -- > fromArgSet (Data.Set.fromList [Arg 3 "aaa", Arg 5 "aaaaa"]) == fromList [(5,"aaaaa"), (3,"aaa")]
 -- > fromArgSet Data.Set.empty == empty
 
-fromArgSet :: Set.Set (Arg k a) -> Map k a
+fromArgSet :: Set.Set' () (Arg k a) -> Map k a
 fromArgSet Set.Tip = Tip
 fromArgSet (Set.Bin sz (Arg x v) l r) = v `seq` Bin sz x v (fromArgSet l) (fromArgSet r)
 

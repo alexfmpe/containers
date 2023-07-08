@@ -130,6 +130,8 @@ module Data.Set.Internal (
             -- * Set type
               Set'(..)       -- instance Eq,Ord,Show,Read,Data
             , Size
+            , pattern Tip
+            , pattern Tip_
 
             -- * Operators
             , (\\)
@@ -149,6 +151,8 @@ module Data.Set.Internal (
 
             -- * Construction
             , empty
+            , emptiable
+            , nonEmpty
             , singleton
             , insert
             , delete
@@ -288,15 +292,19 @@ m1 \\ m2 = difference m1 m2
 -- | A set of values @a@.
 
 -- See Note: Order of constructors
-data Set' (e :: * -> *) a
-  = Bin {-# UNPACK #-} !Size !a !(Set' Maybe a) !(Set' Maybe a)
-  | Tip' (e Void)
+data Set' e a
+  = Bin {-# UNPACK #-} !Size !a !(Set' () a) !(Set' () a)
+  | Tip' e
 
-type Set = Set' Maybe
+type Set = Set' ()
 
 {-# COMPLETE Bin, Tip #-}
-pattern Tip :: Set' Maybe a
-pattern Tip = Tip' Nothing
+pattern Tip :: Set' () a
+pattern Tip = Tip' ()
+
+{-# COMPLETE Bin, Tip_ #-}
+pattern Tip_ :: Set' e a
+pattern Tip_ <- Tip' _
 
 type Size     = Int
 
@@ -307,22 +315,22 @@ type role Set' nominal nominal
 -- | @since 0.6.6
 deriving instance Lift a => Lift (Set a)
 
-instance Ord a => Monoid (Set' Maybe a) where
+instance Ord a => Monoid (Set' () a) where
     mempty  = empty
     mconcat = unions
     mappend = (<>)
 
 -- | @since 0.5.7
-instance Ord a => Semigroup (Set' Maybe a) where
+instance Ord a => Semigroup (Set' () a) where
     (<>)    = union
     stimes  = stimesIdempotentMonoid
 
-instance Ord a => Semigroup (Set' Identity a) where
+instance Ord a => Semigroup (Set' Void a) where
     (<>)    = union
     stimes  = stimesIdempotent
 
 -- | Folds in order of increasing key.
-instance Foldable.Foldable (Set' Maybe) where
+instance Foldable.Foldable (Set' ()) where
     fold = go
       where go Tip = mempty
             go (Bin 1 k _ _) = k
@@ -369,7 +377,7 @@ instance Foldable.Foldable (Set' Maybe) where
 -- This instance preserves data abstraction at the cost of inefficiency.
 -- We provide limited reflection services for the sake of data abstraction.
 
-instance (Data a, Ord a) => Data (Set' Maybe a) where
+instance (Data a, Ord a) => Data (Set' () a) where
   gfoldl f z set = z fromList `f` (toList set)
   toConstr _     = fromListConstr
   gunfold k z c  = case constrIndex c of
@@ -392,7 +400,7 @@ setDataType = mkDataType "Data.Set.Internal.Set" [fromListConstr]
 
 
 -- | \(O(1)\). Is this the empty set?
-null :: Set' Maybe a -> Bool
+null :: Set' () a -> Bool
 null Tip      = True
 null (Bin {}) = False
 {-# INLINE null #-}
@@ -518,7 +526,7 @@ lookupGE = goNothing
   Construction
 --------------------------------------------------------------------}
 -- | \(O(1)\). The empty set.
-empty  :: Set' Maybe a
+empty  :: Set' () a
 empty = Tip
 {-# INLINE empty #-}
 
@@ -527,13 +535,13 @@ singleton :: a -> Set' e a
 singleton x = Bin 1 x Tip Tip
 {-# INLINE singleton #-}
 
-emptiable :: Set' Identity a -> Set' Maybe a
+emptiable :: Set' Void a -> Set' () a
 emptiable a = case a of
   Tip' _ -> Tip
   Bin s x l r -> Bin s x l r
 {-# INLINE emptiable #-}
 
-nonEmpty :: Set' Maybe a -> Maybe (Set' Identity a)
+nonEmpty :: Set' () a -> Maybe (Set' Void a)
 nonEmpty a = case a of
   Tip -> Nothing
   Bin s x l r -> Just (Bin s x l r)
@@ -547,11 +555,11 @@ nonEmpty a = case a of
 
 -- See Note: Type of local 'go' function
 -- See Note: Avoiding worker/wrapper (in Data.Map.Internal)
-insert :: Ord a => a -> Set a -> Set a
+insert :: Ord a => a -> Set' e a -> Set' e a
 insert x0 = go x0 x0
   where
-    go :: Ord a => a -> a -> Set a -> Set a
-    go orig !_ Tip = singleton (lazy orig)
+    go :: Ord a => a -> a -> Set' e a -> Set' e a
+    go orig !_ (Tip' _) = singleton (lazy orig)
     go orig !x t@(Bin sz y l r) = case compare x y of
         LT | l' `ptrEq` l -> t
            | otherwise -> balanceL y l' r
@@ -577,11 +585,11 @@ lazy a = a
 
 -- See Note: Type of local 'go' function
 -- See Note: Avoiding worker/wrapper (in Data.Map.Internal)
-insertR :: Ord a => a -> Set a -> Set a
+insertR :: Ord a => a -> Set' e a -> Set' e a
 insertR x0 = go x0 x0
   where
-    go :: Ord a => a -> a -> Set a -> Set a
-    go orig !_ Tip = singleton (lazy orig)
+    go :: Ord a => a -> a -> Set' e a -> Set' e a
+    go orig !_ (Tip' _) = singleton (lazy orig)
     go orig !x t@(Bin _ y l r) = case compare x y of
         LT | l' `ptrEq` l -> t
            | otherwise -> balanceL y l' r
@@ -796,12 +804,12 @@ lookupMinSure _ (Bin _ x l _) = lookupMinSure x l
 --
 -- @since 0.5.9
 
-lookupMin :: Set' e a -> e a
-lookupMin (Tip' x) = x --Nothing
+lookupMin :: Set' e a -> Maybe a
+lookupMin Tip_ = Nothing
 lookupMin (Bin _ x l _) = Just $! lookupMinSure x l
 
 -- | \(O(\log n)\). The minimal element of a set.
-findMin :: Set' Maybe a -> a
+findMin :: Set' () a -> a
 findMin t
   | Just r <- lookupMin t = r
   | otherwise = error "Set.findMin: empty set has no minimal element"
@@ -814,12 +822,12 @@ lookupMaxSure _ (Bin _ x _ r) = lookupMaxSure x r
 --
 -- @since 0.5.9
 
-lookupMax :: Set' e a -> e a
-lookupMax Tip = Nothing
+lookupMax :: Set' e a -> Maybe a
+lookupMax (Tip' _) = Nothing
 lookupMax (Bin _ x _ r) = Just $! lookupMaxSure x r
 
 -- | \(O(\log n)\). The maximal element of a set.
-findMax :: Set' Maybe a -> a
+findMax :: Set' () a -> a
 findMax t
   | Just r <- lookupMax t = r
   | otherwise = error "Set.findMax: empty set has no maximal element"
@@ -840,7 +848,7 @@ deleteMax Tip             = Tip
   Union.
 --------------------------------------------------------------------}
 -- | The union of the sets in a Foldable structure : (@'unions' == 'foldl' 'union' 'empty'@).
-unions :: (Foldable f, Ord a) => f (Set' Maybe a) -> Set' Maybe a
+unions :: (Foldable f, Ord a) => f (Set' () a) -> Set' () a
 unions = Foldable.foldl' union empty
 #if __GLASGOW_HASKELL__
 {-# INLINABLE unions #-}
@@ -849,10 +857,10 @@ unions = Foldable.foldl' union empty
 -- | \(O\bigl(m \log\bigl(\frac{n+1}{m+1}\bigr)\bigr), \; m \leq n\). The union of two sets, preferring the first set when
 -- equal elements are encountered.
 union :: Ord a => Set' e a -> Set' e a -> Set' e a
-union t1 Tip  = t1
+union t1 (Tip' _)  = t1
 union t1 (Bin 1 x _ _) = insertR x t1
 union (Bin 1 x _ _) t2 = insert x t2
-union Tip t2  = t2
+union (Tip' _) t2  = t2
 union t1@(Bin _ x l1 r1) t2 = case splitS x t2 of
   (l2 :*: r2)
     | l1l2 `ptrEq` l1 && r1r2 `ptrEq` r1 -> t1
@@ -1000,7 +1008,7 @@ mapMonotonic f (Bin sz x l r) = Bin sz (f x) (mapMonotonic f l) (mapMonotonic f 
 -- for compatibility only.
 --
 -- /Please note that fold will be deprecated in the future and removed./
-fold :: (a -> b -> b) -> b -> Set' Maybe a -> b
+fold :: (a -> b -> b) -> b -> Set' () a -> b
 fold = foldr
 {-# INLINE fold #-}
 
@@ -1010,7 +1018,7 @@ fold = foldr
 -- For example,
 --
 -- > toAscList set = foldr (:) [] set
-foldr :: (a -> b -> b) -> b -> Set' Maybe a -> b
+foldr :: (a -> b -> b) -> b -> Set' () a -> b
 foldr f z = go z
   where
     go z' Tip           = z'
@@ -1020,7 +1028,7 @@ foldr f z = go z
 -- | \(O(n)\). A strict version of 'foldr'. Each application of the operator is
 -- evaluated before using the result in the next application. This
 -- function is strict in the starting value.
-foldr' :: (a -> b -> b) -> b -> Set' Maybe a -> b
+foldr' :: (a -> b -> b) -> b -> Set' () a -> b
 foldr' f z = go z
   where
     go !z' Tip           = z'
@@ -1033,7 +1041,7 @@ foldr' f z = go z
 -- For example,
 --
 -- > toDescList set = foldl (flip (:)) [] set
-foldl :: (a -> b -> a) -> a -> Set' Maybe b -> a
+foldl :: (a -> b -> a) -> a -> Set' () b -> a
 foldl f z = go z
   where
     go z' Tip           = z'
@@ -1043,7 +1051,7 @@ foldl f z = go z
 -- | \(O(n)\). A strict version of 'foldl'. Each application of the operator is
 -- evaluated before using the result in the next application. This
 -- function is strict in the starting value.
-foldl' :: (a -> b -> a) -> a -> Set' Maybe b -> a
+foldl' :: (a -> b -> a) -> a -> Set' () b -> a
 foldl' f z = go z
   where
     go !z' Tip           = z'
@@ -1073,11 +1081,11 @@ instance (Ord a) => GHCExts.IsList (Set a) where
 #endif
 
 -- | \(O(n)\). Convert the set to a list of elements. Subject to list fusion.
-toList :: Set' e a -> [a]
+toList :: Set' () a -> [a]
 toList = toAscList
 
 -- | \(O(n)\). Convert the set to an ascending list of elements. Subject to list fusion.
-toAscList :: Set a -> [a]
+toAscList :: Set' () a -> [a]
 toAscList = foldr (:) []
 
 -- | \(O(n)\). Convert the set to a descending list of elements. Subject to list
@@ -1120,7 +1128,7 @@ foldlFB = foldl
 
 -- For some reason, when 'singleton' is used in fromList or in
 -- create, it is not inlined, so we inline it manually.
-fromList :: Ord a => [a] -> Set' Maybe a
+fromList :: Ord a => [a] -> Set' () a
 fromList [] = Tip
 fromList [x] = Bin 1 x Tip Tip
 fromList (x0 : xs0) | not_ordered x0 xs0 = fromList' (Bin 1 x0 Tip Tip) xs0
@@ -1337,8 +1345,8 @@ split :: Ord a => a -> Set a -> (Set a,Set a)
 split x t = toPair $ splitS x t
 {-# INLINABLE split #-}
 
-splitS :: Ord a => a -> Set a -> StrictPair (Set a) (Set a)
-splitS _ Tip = (Tip :*: Tip)
+splitS :: Ord a => a -> Set' e a -> StrictPair (Set' () a) (Set' () a)
+splitS _ (Tip' _) = (Tip :*: Tip)
 splitS x (Bin _ y l r)
       = case compare x y of
           LT -> let (lt :*: gt) = splitS x l in (lt :*: link y gt r)
@@ -1607,9 +1615,9 @@ spanAntitone p0 m = toPair (go p0 m)
 {--------------------------------------------------------------------
   Link
 --------------------------------------------------------------------}
-link :: a -> Set a -> Set a -> Set a
-link x Tip r  = insertMin x r
-link x l Tip  = insertMax x l
+link :: a -> Set' () a -> Set' () a -> Set' e' a
+link x Tip_ r  = insertMin x r
+link x l Tip_  = insertMax x l
 link x l@(Bin sizeL y ly ry) r@(Bin sizeR z lz rz)
   | delta*sizeL < sizeR  = balanceL z (link x l lz) rz
   | delta*sizeR < sizeL  = balanceR y ly (link x ry r)
@@ -1617,16 +1625,16 @@ link x l@(Bin sizeL y ly ry) r@(Bin sizeR z lz rz)
 
 
 -- insertMin and insertMax don't perform potentially expensive comparisons.
-insertMax,insertMin :: a -> Set a -> Set a
+insertMax,insertMin :: a -> Set' e a -> Set' e' a
 insertMax x t
   = case t of
-      Tip -> singleton x
+      Tip_ -> singleton x
       Bin _ y l r
           -> balanceR y l (insertMax x r)
 
 insertMin x t
   = case t of
-      Tip -> singleton x
+      Tip_ -> singleton x
       Bin _ y l r
           -> balanceL y (insertMin x l) r
 
@@ -1773,10 +1781,10 @@ ratio = 2
 
 -- balanceL is called when left subtree might have been inserted to or when
 -- right subtree might have been deleted from.
-balanceL :: a -> Set a -> Set a -> Set a
+balanceL :: a -> Set' () a -> Set' () a -> Set' e' a
 balanceL x l r = case r of
-  Tip -> case l of
-           Tip -> Bin 1 x Tip Tip
+  Tip' _ -> case l of
+           Tip' _ -> Bin 1 x Tip Tip
            (Bin _ _ Tip Tip) -> Bin 2 x l Tip
            (Bin _ lx Tip (Bin _ lrx _ _)) -> Bin 3 lrx (Bin 1 lx Tip Tip) (Bin 1 x Tip Tip)
            (Bin _ lx ll@(Bin _ _ _ _) Tip) -> Bin 3 lx ll (Bin 1 x Tip Tip)
@@ -1785,7 +1793,7 @@ balanceL x l r = case r of
              | otherwise -> Bin (1+ls) lrx (Bin (1+lls+size lrl) lx ll lrl) (Bin (1+size lrr) x lrr Tip)
 
   (Bin rs _ _ _) -> case l of
-           Tip -> Bin (1+rs) x Tip r
+           Tip' _ -> Bin (1+rs) x Tip r
 
            (Bin ls lx ll lr)
               | ls > delta*rs  -> case (ll, lr) of
@@ -1798,10 +1806,10 @@ balanceL x l r = case r of
 
 -- balanceR is called when right subtree might have been inserted to or when
 -- left subtree might have been deleted from.
-balanceR :: a -> Set a -> Set a -> Set a
+balanceR :: a -> Set' () a -> Set' () a -> Set' e' a
 balanceR x l r = case l of
-  Tip -> case r of
-           Tip -> Bin 1 x Tip Tip
+  Tip' _ -> case r of
+           Tip' _ -> Bin 1 x Tip Tip
            (Bin _ _ Tip Tip) -> Bin 2 x Tip r
            (Bin _ rx Tip rr@(Bin _ _ _ _)) -> Bin 3 rx (Bin 1 x Tip Tip) rr
            (Bin _ rx (Bin _ rlx _ _) Tip) -> Bin 3 rlx (Bin 1 x Tip Tip) (Bin 1 rx Tip Tip)
@@ -1810,7 +1818,7 @@ balanceR x l r = case l of
              | otherwise -> Bin (1+rs) rlx (Bin (1+size rll) x Tip rll) (Bin (1+rrs+size rlr) rx rlr rr)
 
   (Bin ls _ _ _) -> case r of
-           Tip -> Bin (1+ls) x l Tip
+           Tip' _ -> Bin (1+ls) x l Tip
 
            (Bin rs rx rl rr)
               | rs > delta*ls  -> case (rl, rr) of
@@ -1824,7 +1832,7 @@ balanceR x l r = case l of
 {--------------------------------------------------------------------
   The bin constructor maintains the size of the tree
 --------------------------------------------------------------------}
-bin :: a -> Set a -> Set a -> Set a
+bin :: a -> Set' () a -> Set' () a -> Set' e' a
 bin x l r
   = Bin (size l + size r + 1) x l r
 {-# INLINE bin #-}

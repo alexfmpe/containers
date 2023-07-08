@@ -180,7 +180,17 @@ module Data.Set (
 #endif
             ) where
 
-import Data.Set.Internal as S
+import Data.Set.Internal as S hiding (empty, insert, member)
+import qualified Data.Set.Internal as S
 
-newtype Set a = Set (Set' Maybe a)
---newtype NonEmptySet a = NonEmptySet (Set' Identity a)
+newtype Set a = Set (Set' () a)
+--newtype NonEmptySet a = NonEmptySet (Set' Void a)
+
+empty :: Set a
+empty = Set S.empty
+
+insert :: Ord a => a -> Set a -> Set a
+insert a (Set s) = Set $ S.insert a s
+
+member :: Ord a => a -> Set a -> Bool
+member a (Set s) = S.member a s
