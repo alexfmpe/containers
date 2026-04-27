@@ -3398,7 +3398,7 @@ assocs m
 -- > keysSet (fromList [(5,"a"), (3,"b")]) == Data.Set.fromList [3,5]
 -- > keysSet empty == Data.Set.empty
 
-keysSet :: Map k a -> Set.Set k
+keysSet :: Ord k => Map k a -> Set.Set k
 keysSet Tip = Set.Tip
 keysSet (Bin sz kx _ l r) = Set.Bin sz kx (keysSet l) (keysSet r)
 
@@ -3408,7 +3408,7 @@ keysSet (Bin sz kx _ l r) = Set.Bin sz kx (keysSet l) (keysSet r)
 -- > argSet empty == Data.Set.empty
 --
 -- @since 0.6.6
-argSet :: Map k a -> Set.Set (Arg k a)
+argSet :: Ord k => Map k a -> Set.Set (Arg k a)
 argSet Tip = Set.Tip
 argSet (Bin sz kx x l r) = Set.Bin sz (Arg kx x) (argSet l) (argSet r)
 

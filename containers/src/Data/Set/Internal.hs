@@ -4,6 +4,7 @@
 #ifdef __GLASGOW_HASKELL__
 {-# LANGUAGE Trustworthy #-}
 {-# LANGUAGE DeriveLift #-}
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE RoleAnnotations #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -300,8 +301,9 @@ m1 \\ m2 = difference m1 m2
 -- | A set of values @a@.
 
 -- See Note: Order of constructors
-data Set a    = Bin {-# UNPACK #-} !Size !a !(Set a) !(Set a)
-              | Tip
+data Set a where
+  Bin :: Ord a => {-# UNPACK #-} !Size -> !a -> !(Set a) -> !(Set a) -> Set a
+  Tip :: Set a
 
 type Size     = Int
 
@@ -355,7 +357,10 @@ instance Foldable.Foldable Set where
     {-# INLINE toList #-}
     elem = go
       where go !_ Tip = False
-            go x (Bin _ y l r) = x == y || go x l || go x r
+            go x (Bin _ y l r) = case compare x y of
+              LT -> go x l
+              GT -> go x r
+              EQ -> True
     {-# INLINABLE elem #-}
     minimum = findMin
     {-# INLINE minimum #-}
@@ -502,7 +507,7 @@ empty = Tip
 {-# INLINE empty #-}
 
 -- | \(O(1)\). Create a singleton set.
-singleton :: a -> Set a
+singleton :: Ord a => a -> Set a
 singleton x = Bin 1 x Tip Tip
 {-# INLINE singleton #-}
 
@@ -1051,7 +1056,7 @@ map f t = finishB (foldl' (\b x -> insertB (f x) b) emptyB t)
 -- strictly increasing. This precondition is not checked. Use 'map' if the
 -- precondition may not hold.
 
-mapMonotonic :: (a->b) -> Set a -> Set b
+mapMonotonic :: Ord b => (a->b) -> Set a -> Set b
 mapMonotonic _ Tip = Tip
 mapMonotonic f (Bin sz x l r) = Bin sz (f x) (mapMonotonic f l) (mapMonotonic f r)
 
@@ -1195,7 +1200,7 @@ fromList xs = finishB (Foldable.foldl' (flip insertB) emptyB xs)
 -- __Warning__: This function should be used only if the elements are in
 -- non-decreasing order. This precondition is not checked. Use 'fromList' if the
 -- precondition may not hold.
-fromAscList :: Eq a => [a] -> Set a
+fromAscList :: Ord a => [a] -> Set a
 fromAscList xs = ascLinkAll (Foldable.foldl' next Nada xs)
   where
     next stk !y = case stk of
@@ -1213,7 +1218,7 @@ fromAscList xs = ascLinkAll (Foldable.foldl' next Nada xs)
 -- precondition may not hold.
 --
 -- @since 0.5.8
-fromDescList :: Eq a => [a] -> Set a
+fromDescList :: Ord a => [a] -> Set a
 fromDescList xs = descLinkAll (Foldable.foldl' next Nada xs)
   where
     next stk !y = case stk of
@@ -1231,10 +1236,10 @@ fromDescList xs = descLinkAll (Foldable.foldl' next Nada xs)
 -- if the precondition may not hold.
 
 -- See Note [fromDistinctAscList implementation]
-fromDistinctAscList :: [a] -> Set a
+fromDistinctAscList :: Ord a => [a] -> Set a
 fromDistinctAscList xs = ascLinkAll (Foldable.foldl' next Nada xs)
   where
-    next :: Stack a -> a -> Stack a
+    next :: Ord a => Stack a -> a -> Stack a
     next (Push x Tip stk) !y = ascLinkTop stk 1 (singleton x) y
     next stk !x = Push x Tip stk
 {-# INLINE fromDistinctAscList #-}  -- INLINE for fusion
@@ -1246,7 +1251,7 @@ ascLinkTop (Push x l@(Bin lsz _ _ _) stk) !rsz r y
     sz = lsz + rsz + 1
 ascLinkTop stk !_ r y = Push y r stk
 
-ascLinkAll :: Stack a -> Set a
+ascLinkAll :: Ord a => Stack a -> Set a
 ascLinkAll stk = foldl'Stack (\r x l -> linkL x l r) Tip stk
 {-# INLINABLE ascLinkAll #-}
 
@@ -1259,22 +1264,22 @@ ascLinkAll stk = foldl'Stack (\r x l -> linkL x l r) Tip stk
 -- @since 0.5.8
 
 -- See Note [fromDistinctAscList implementation]
-fromDistinctDescList :: [a] -> Set a
+fromDistinctDescList :: Ord a => [a] -> Set a
 fromDistinctDescList xs = descLinkAll (Foldable.foldl' next Nada xs)
   where
-    next :: Stack a -> a -> Stack a
+    next :: Ord a => Stack a -> a -> Stack a
     next (Push y Tip stk) !x = descLinkTop x 1 (singleton y) stk
     next stk !y = Push y Tip stk
 {-# INLINE fromDistinctDescList #-}  -- INLINE for fusion
 
-descLinkTop :: a -> Int -> Set a -> Stack a -> Stack a
+descLinkTop :: Ord a => a -> Int -> Set a -> Stack a -> Stack a
 descLinkTop x !lsz l (Push y r@(Bin rsz _ _ _) stk)
   | lsz == rsz = descLinkTop x sz (Bin sz y l r) stk
   where
     sz = lsz + rsz + 1
 descLinkTop y !_ r stk = Push y r stk
 
-descLinkAll :: Stack a -> Set a
+descLinkAll :: Ord a => Stack a -> Set a
 descLinkAll stk = foldl'Stack (\l x r -> linkR x l r) Tip stk
 {-# INLINABLE descLinkAll #-}
 
@@ -1718,7 +1723,7 @@ insertB !y b = case b of
 {-# INLINE insertB #-}
 
 -- Finalize the builder into a Set.
-finishB :: SetBuilder a -> Set a
+finishB :: Ord a => SetBuilder a -> Set a
 finishB (BAsc stk) = ascLinkAll stk
 finishB (BSet s) = s
 {-# INLINABLE finishB #-}
@@ -1748,7 +1753,7 @@ finishB (BSet s) = s
 {--------------------------------------------------------------------
   Link
 --------------------------------------------------------------------}
-link :: a -> Set a -> Set a -> Set a
+link :: Ord a => a -> Set a -> Set a -> Set a
 link x Tip r  = insertMin x r
 link x l Tip  = insertMax x l
 link x l@(Bin lsz lx ll lr) r@(Bin rsz rx rl rr)
@@ -1758,12 +1763,12 @@ link x l@(Bin lsz lx ll lr) r@(Bin rsz rx rl rr)
 
 -- Variant of link. Restores balance when the left tree may be too large for the
 -- right tree, but not the other way around.
-linkL :: a -> Set a -> Set a -> Set a
+linkL :: Ord a => a -> Set a -> Set a -> Set a
 linkL x l r = case r of
   Tip -> insertMax x l
   Bin rsz _ _ _ -> linkL_ x l rsz r
 
-linkL_ :: a -> Set a -> Int -> Set a -> Set a
+linkL_ :: Ord a => a -> Set a -> Int -> Set a -> Set a
 linkL_ x l !rsz r = case l of
   Bin lsz lx ll lr
     | delta*rsz < lsz -> balanceR lx ll (linkL_ x lr rsz r)
@@ -1772,12 +1777,12 @@ linkL_ x l !rsz r = case l of
 
 -- Variant of link. Restores balance when the right tree may be too large for
 -- the left tree, but not the other way around.
-linkR :: a -> Set a -> Set a -> Set a
+linkR :: Ord a => a -> Set a -> Set a -> Set a
 linkR x l r = case l of
   Tip -> insertMin x r
   Bin lsz _ _ _ -> linkR_ x lsz l r
 
-linkR_ :: a -> Int -> Set a -> Set a -> Set a
+linkR_ :: Ord a => a -> Int -> Set a -> Set a -> Set a
 linkR_ x !lsz l r = case r of
   Bin rsz rx rl rr
     | delta*lsz < rsz -> balanceL rx (linkR_ x lsz l rl) rr
@@ -1786,7 +1791,7 @@ linkR_ x !lsz l r = case r of
 
 -- insertMin and insertMax don't perform potentially expensive comparisons.
 -- @since FIXME
-insertMax :: a -> Set a -> Set a
+insertMax :: Ord a => a -> Set a -> Set a
 insertMax x t
   = case t of
       Tip -> singleton x
@@ -1794,7 +1799,7 @@ insertMax x t
           -> balanceR y l (insertMax x r)
 
 -- @since FIXME
-insertMin :: a -> Set a -> Set a
+insertMin :: Ord a => a -> Set a -> Set a
 insertMin x t
   = case t of
       Tip -> singleton x
@@ -1976,14 +1981,14 @@ ratio = 2
 -- balanceL is called when left subtree might have been inserted to or when
 -- right subtree might have been deleted from.
 -- @since FIXME
-balanceL :: a -> Set a -> Set a -> Set a
+balanceL :: Ord a => a -> Set a -> Set a -> Set a
 balanceL x l r = case (l, r) of
   (Bin ls _ _ _, Bin rs _ _ _)
     | ls <= delta*rs -> Bin (1+ls+rs) x l r
   _ -> balanceL_ x l r
 {-# INLINE balanceL #-} -- See Note [Inlining balance]
 
-balanceL_ :: a -> Set a -> Set a -> Set a
+balanceL_ :: Ord a => a -> Set a -> Set a -> Set a
 balanceL_ x l r = case r of
   Tip -> case l of
            Tip -> Bin 1 x Tip Tip
@@ -2007,14 +2012,14 @@ balanceL_ x l r = case r of
 -- balanceR is called when right subtree might have been inserted to or when
 -- left subtree might have been deleted from.
 -- @since FIXME
-balanceR :: a -> Set a -> Set a -> Set a
+balanceR :: Ord a => a -> Set a -> Set a -> Set a
 balanceR x l r = case (l, r) of
   (Bin ls _ _ _, Bin rs _ _ _)
     | rs <= delta*ls -> Bin (1+ls+rs) x l r
   _ -> balanceR_ x l r
 {-# INLINE balanceR #-} -- See Note [Inlining balance]
 
-balanceR_ :: a -> Set a -> Set a -> Set a
+balanceR_ :: Ord a => a -> Set a -> Set a -> Set a
 balanceR_ x l r = case l of
   Tip -> case r of
            Tip -> Bin 1 x Tip Tip
@@ -2038,7 +2043,7 @@ balanceR_ x l r = case l of
 {--------------------------------------------------------------------
   The bin constructor maintains the size of the tree
 --------------------------------------------------------------------}
-bin :: a -> Set a -> Set a -> Set a
+bin :: Ord a => a -> Set a -> Set a -> Set a
 bin x l r
   = Bin (size l + size r + 1) x l r
 {-# INLINE bin #-}
@@ -2101,7 +2106,7 @@ splitRoot orig =
 -- = O(log n * \sum_{i=1}^{n-1} 2^i)
 -- = O(2^n log n)
 
-powerSet :: Set a -> Set (Set a)
+powerSet :: Ord a => Set a -> Set (Set a)
 powerSet xs0 = insertMin empty (foldr' step Tip xs0) where
   step x pxs = insertMin (singleton x) (insertMin x `mapMonotonic` pxs) `glue` pxs
 
@@ -2119,7 +2124,7 @@ powerSet xs0 = insertMin empty (foldr' step Tip xs0) where
 -- @
 --
 -- @since 0.5.11
-cartesianProduct :: Set a -> Set b -> Set (a, b)
+cartesianProduct :: (Ord a, Ord b) => Set a -> Set b -> Set (a, b)
 -- The obvious big-O optimal (O(nm)) implementation would be
 --
 --   cartesianProduct _as Tip = Tip
@@ -2189,7 +2194,7 @@ instance Monoid (MergeSet a) where
 -- @
 --
 -- @since 0.5.11
-disjointUnion :: Set a -> Set b -> Set (Either a b)
+disjointUnion :: (Ord a, Ord b) => Set a -> Set b -> Set (Either a b)
 disjointUnion as bs = link2 (mapMonotonic Left as) (mapMonotonic Right bs)
 
 {--------------------------------------------------------------------
