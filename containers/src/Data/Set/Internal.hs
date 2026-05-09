@@ -1,5 +1,9 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE LiberalTypeSynonyms #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE PatternGuards #-}
 #ifdef __GLASGOW_HASKELL__
 {-# LANGUAGE Trustworthy #-}
@@ -11,6 +15,7 @@
 #endif
 
 {-# OPTIONS_HADDOCK not-home #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 #include "containers.h"
 
@@ -284,6 +289,11 @@ import Language.Haskell.TH ()
 import Data.Coerce (coerce)
 #endif
 
+--type CompatOrd a = ()
+--type CompatOrd' a = Set a
+
+class Ord a => CompatOrd a
+instance Ord a => CompatOrd a
 
 {--------------------------------------------------------------------
   Operators
@@ -315,7 +325,7 @@ deriving instance Lift a => Lift (Set a)
 #endif
 
 -- | @mempty@ = 'empty'
-instance Ord a => Monoid (Set a) where
+instance CompatOrd a => Monoid (Set a) where
     mempty  = empty
     mconcat = unions
 #if !MIN_VERSION_base(4,11,0)
