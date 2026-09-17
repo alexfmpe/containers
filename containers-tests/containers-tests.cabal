@@ -49,6 +49,7 @@ common warnings
     -Werror=unused-top-binds
     -Werror=incomplete-patterns
     -Werror=incomplete-uni-patterns
+    -fproc-alignment=64
 
 common test-deps
   import: deps

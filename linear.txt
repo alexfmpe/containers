@@ -1,0 +1,310 @@
+$ cabal run set-benchmarks -- +RTS -T -RTS --stdev 5 --baseline set-baseline.csv -p '$0 ~ /difference/ || $0 ~ /intersection/ || $0 ~ /union/ || $0 ~ /disjoint/ || $0 ~ /symmetricDifference/ || $0 ~ /isSubsetOf/'
+
+# baseline
+  unions:                  OK
+    82.5 μs ± 7.8 μs, 477 KB allocated,  10 KB copied,  10 MB peak memory
+  union:                   OK
+    82.0 μs ± 7.7 μs, 477 KB allocated,  10 KB copied,  10 MB peak memory
+  difference:              OK
+    84.1 μs ± 7.6 μs, 343 KB allocated, 3.4 KB copied,  10 MB peak memory
+  symmetricDifference:     OK
+    88.3 μs ± 4.7 μs, 320 KB allocated, 2.9 KB copied,  10 MB peak memory
+  intersection:            OK
+    86.5 μs ± 3.3 μs, 322 KB allocated, 2.9 KB copied,  10 MB peak memory
+  disjoint:false:          OK
+    397  ns ±  26 ns, 2.0 KB allocated,   0 B  copied,  10 MB peak memory
+  disjoint:true:           OK
+    84.1 μs ± 7.9 μs, 236 KB allocated, 132 B  copied,  10 MB peak memory
+  isSubsetOf:false:        OK
+    93.2 ns ± 6.5 ns, 904 B  allocated,   0 B  copied,  10 MB peak memory
+  isSubsetOf:true:         OK
+    38.4 μs ± 3.3 μs, 188 KB allocated,  87 B  copied,  10 MB peak memory
+  null.intersection:false: OK
+    86.4 μs ± 7.2 μs, 322 KB allocated, 2.9 KB copied,  10 MB peak memory
+  null.intersection:true:  OK
+    70.3 μs ± 6.9 μs, 305 KB allocated, 167 B  copied,  10 MB peak memory
+
+# linear
+  unions:                  OK
+    106  μs ± 7.8 μs, 897 KB allocated,  25 KB copied, 9.0 MB peak memory, 28% more than baseline
+  union:                   OK
+    68.9 μs ± 6.8 μs, 608 KB allocated,  16 KB copied, 9.0 MB peak memory, 16% less than baseline
+  difference:              OK
+    40.5 μs ± 1.7 μs, 288 KB allocated, 3.2 KB copied,  10 MB peak memory, 51% less than baseline
+  symmetricDifference:     OK
+    40.7 μs ± 3.5 μs, 288 KB allocated, 3.2 KB copied,  10 MB peak memory, 53% less than baseline
+  intersection:            OK
+    43.1 μs ± 3.3 μs, 304 KB allocated, 3.2 KB copied,  10 MB peak memory, 50% less than baseline
+  disjoint:false:          OK
+    63.1 ns ± 3.3 ns, 1.2 KB allocated,   0 B  copied,  10 MB peak memory, 84% less than baseline
+  disjoint:true:           OK
+    54.0 μs ± 4.1 μs, 224 KB allocated,  44 B  copied,  10 MB peak memory, 35% less than baseline
+  isSubsetOf:false:        OK
+    47.4 ns ± 3.7 ns, 1.1 KB allocated,   0 B  copied,  10 MB peak memory, 49% less than baseline
+  isSubsetOf:true:         OK
+    62.8 μs ± 3.8 μs, 336 KB allocated,  66 B  copied,  10 MB peak memory, 63% more than baseline
+  null.intersection:false: OK
+    43.2 μs ± 1.7 μs, 304 KB allocated, 3.2 KB copied,  10 MB peak memory, 49% less than baseline
+  null.intersection:true:  OK
+    26.7 μs ± 1.8 μs, 112 KB allocated,  14 B  copied,  10 MB peak memory, 62% less than baseline
+
+# short-circuit
+  unions:                  OK
+    67.6 μs ± 6.6 μs, 609 KB allocated,  16 KB copied, 9.0 MB peak memory, 18% less than baseline
+  union:                   OK
+    67.8 μs ± 6.6 μs, 608 KB allocated,  16 KB copied, 9.0 MB peak memory, 17% less than baseline
+  difference:              OK
+    76.4 μs ± 7.3 μs, 513 KB allocated, 4.6 KB copied, 9.0 MB peak memory,  9% less than baseline
+  symmetricDifference:     OK
+    78.1 μs ± 5.7 μs, 512 KB allocated, 4.6 KB copied, 9.0 MB peak memory, 11% less than baseline
+  intersection:            OK
+    80.3 μs ± 4.2 μs, 529 KB allocated, 4.6 KB copied, 9.0 MB peak memory,  7% less than baseline
+  disjoint:false:          OK
+    61.8 ns ± 3.3 ns, 1.2 KB allocated,   0 B  copied, 9.0 MB peak memory, 84% less than baseline
+  disjoint:true:           OK
+    52.7 μs ± 3.6 μs, 224 KB allocated,  44 B  copied, 9.0 MB peak memory, 37% less than baseline
+  isSubsetOf:false:        OK
+    50.1 ns ± 3.8 ns, 1.2 KB allocated,   0 B  copied, 9.0 MB peak memory, 46% less than baseline
+  isSubsetOf:true:         OK
+    61.4 μs ± 4.9 μs, 336 KB allocated,  66 B  copied, 9.0 MB peak memory, 59% more than baseline
+  null.intersection:false: OK
+    78.6 μs ± 7.2 μs, 529 KB allocated, 4.6 KB copied, 9.0 MB peak memory,  8% less than baseline
+  null.intersection:true:  OK
+    37.7 μs ± 3.5 μs, 224 KB allocated,  45 B  copied, 9.0 MB peak memory, 46% less than baseline
+
+
+# baseline x16
+  unions:                  OK
+    4.57 ms ± 305 μs, 7.5 MB allocated, 6.5 MB copied, 101 MB peak memory
+  union:                   OK
+    4.56 ms ± 377 μs, 7.5 MB allocated, 6.5 MB copied, 101 MB peak memory
+  difference:              OK
+    2.53 ms ± 229 μs, 5.3 MB allocated, 1.5 MB copied, 101 MB peak memory
+  symmetricDifference:     OK
+    2.63 ms ± 171 μs, 5.0 MB allocated, 1.2 MB copied, 101 MB peak memory
+  intersection:            OK
+    2.51 ms ±  78 μs, 5.0 MB allocated, 1.2 MB copied, 101 MB peak memory
+  disjoint:false:          OK
+    103  ns ± 7.4 ns, 584 B  allocated,   0 B  copied, 101 MB peak memory
+  disjoint:true:           OK
+    1.65 ms ± 131 μs, 3.7 MB allocated, 3.6 KB copied, 101 MB peak memory
+  isSubsetOf:false:        OK
+    110  ns ± 7.7 ns, 1.2 KB allocated,   0 B  copied, 101 MB peak memory
+  isSubsetOf:true:         OK
+    1.46 ms ± 132 μs, 2.9 MB allocated, 2.4 KB copied, 101 MB peak memory
+  null.intersection:false: OK
+    2.51 ms ± 110 μs, 5.0 MB allocated, 746 KB copied, 101 MB peak memory
+  null.intersection:true:  OK
+    1.42 ms ±  93 μs, 4.8 MB allocated, 4.5 KB copied, 101 MB peak memory
+
+# PR x16
+  unions:                  OK
+    9.83 ms ± 422 μs,  14 MB allocated,  13 MB copied, 102 MB peak memory, 115% more than baseline
+  union:                   OK
+    7.91 ms ± 244 μs, 9.5 MB allocated,  11 MB copied, 105 MB peak memory, 73% more than baseline
+  difference:              OK
+    1.72 ms ± 125 μs, 4.5 MB allocated, 1.2 MB copied, 105 MB peak memory, 32% less than baseline
+  symmetricDifference:     OK
+    1.74 ms ±  82 μs, 4.5 MB allocated, 1.2 MB copied, 105 MB peak memory, 33% less than baseline
+  intersection:            OK
+    2.16 ms ± 123 μs, 4.8 MB allocated, 1.3 MB copied, 105 MB peak memory, 14% less than baseline
+  disjoint:false:          OK
+    116  ns ± 9.2 ns, 1.8 KB allocated,   0 B  copied, 105 MB peak memory, 12% more than baseline
+  disjoint:true:           OK
+    1.36 ms ± 124 μs, 3.5 MB allocated, 921 B  copied, 105 MB peak memory, 17% less than baseline
+  isSubsetOf:false:        OK
+    95.0 ns ± 7.3 ns, 1.7 KB allocated,   0 B  copied, 105 MB peak memory, 13% less than baseline
+  isSubsetOf:true:         OK
+    1.63 ms ± 133 μs, 5.3 MB allocated, 1.3 KB copied, 105 MB peak memory, 11% more than baseline
+  null.intersection:false: OK
+    1.79 ms ±  74 μs, 4.8 MB allocated, 832 KB copied, 105 MB peak memory, 28% less than baseline
+  null.intersection:true:  OK
+    606  μs ±  60 μs, 1.8 MB allocated, 278 B  copied, 105 MB peak memory, 57% less than baseline
+
+
+# baseline x256
+  unions:                  OK
+    80.7 ms ± 7.8 ms, 120 MB allocated,  86 MB copied, 1.2 GB peak memory
+  union:                   OK
+    101  ms ± 6.5 ms, 120 MB allocated, 124 MB copied, 1.5 GB peak memory
+  difference:              OK
+    69.8 ms ± 5.6 ms,  86 MB allocated,  37 MB copied, 1.5 GB peak memory
+  symmetricDifference:     OK
+    64.1 ms ± 3.6 ms,  80 MB allocated,  51 MB copied, 1.5 GB peak memory
+  intersection:            OK
+    63.1 ms ± 2.4 ms,  80 MB allocated,  53 MB copied, 1.5 GB peak memory
+  disjoint:false:          OK
+    677  ns ±  62 ns, 3.7 KB allocated,   1 B  copied, 1.5 GB peak memory
+  disjoint:true:           OK
+    28.6 ms ± 1.8 ms,  59 MB allocated,  83 KB copied, 1.5 GB peak memory
+  isSubsetOf:false:        OK
+    137  ns ±  13 ns, 1.4 KB allocated,   0 B  copied, 1.5 GB peak memory
+  isSubsetOf:true:         OK
+    38.1 ms ± 383 μs,  47 MB allocated,  60 KB copied, 1.5 GB peak memory
+  null.intersection:false: OK
+    61.5 ms ± 3.2 ms,  80 MB allocated,  50 MB copied, 1.5 GB peak memory
+  null.intersection:true:  OK
+    27.0 ms ± 347 μs,  76 MB allocated, 103 KB copied, 1.5 GB peak memory
+
+# PR x256
+  unions:                  OK
+    254  ms ± 9.3 ms, 224 MB allocated, 388 MB copied, 1.6 GB peak memory, 215% more than baseline
+  union:                   OK
+    165  ms ± 2.7 ms, 152 MB allocated, 275 MB copied, 1.6 GB peak memory, 62% more than baseline
+  difference:              OK
+    90.1 ms ± 4.9 ms,  72 MB allocated, 112 MB copied, 1.6 GB peak memory, 29% more than baseline
+  symmetricDifference:     OK
+    91.7 ms ± 3.0 ms,  72 MB allocated, 118 MB copied, 1.6 GB peak memory, 43% more than baseline
+  intersection:            OK
+    80.6 ms ± 1.0 ms,  76 MB allocated, 110 MB copied, 1.6 GB peak memory, 27% more than baseline
+  disjoint:false:          OK
+    96.4 ns ± 7.7 ns, 2.2 KB allocated,   0 B  copied, 1.6 GB peak memory, 85% less than baseline
+  disjoint:true:           OK
+    45.3 ms ± 949 μs,  56 MB allocated,  41 MB copied, 1.6 GB peak memory, 58% more than baseline
+  isSubsetOf:false:        OK
+    84.1 ns ± 6.7 ns, 2.1 KB allocated,   0 B  copied, 1.6 GB peak memory, 38% less than baseline
+  isSubsetOf:true:         OK
+    66.7 ms ± 4.4 ms,  84 MB allocated,  64 MB copied, 1.6 GB peak memory, 74% more than baseline
+  null.intersection:false: OK
+    76.1 ms ± 3.3 ms,  76 MB allocated, 105 MB copied, 1.6 GB peak memory, 23% more than baseline
+  null.intersection:true:  OK
+    20.6 ms ± 1.8 ms,  28 MB allocated,  17 MB copied, 1.6 GB peak memory, 23% less than baseline
+
+
+# baseline 2^8
+  unions:                  OK
+    4.43 μs ± 423 ns,  29 KB allocated,  41 B  copied, 6.0 MB peak memory
+  union:                   OK
+    4.42 μs ± 429 ns,  29 KB allocated,  43 B  copied, 6.0 MB peak memory
+  difference:              OK
+    4.25 μs ± 424 ns,  21 KB allocated,  17 B  copied, 6.0 MB peak memory
+  symmetricDifference:     OK
+    4.58 μs ± 444 ns,  19 KB allocated,  13 B  copied, 6.0 MB peak memory
+  intersection:            OK
+    4.63 μs ± 413 ns,  20 KB allocated,  14 B  copied, 6.0 MB peak memory
+  disjoint:false:          OK
+    327  ns ±  27 ns, 1.6 KB allocated,   0 B  copied, 6.0 MB peak memory
+  disjoint:true:           OK
+    4.73 μs ± 414 ns,  14 KB allocated,   3 B  copied, 6.0 MB peak memory
+  isSubsetOf:false:        OK
+    57.1 ns ± 3.2 ns, 504 B  allocated,   0 B  copied, 6.0 MB peak memory
+  isSubsetOf:true:         OK
+    2.11 μs ± 209 ns,  11 KB allocated,   2 B  copied, 6.0 MB peak memory
+  null.intersection:false: OK
+    4.63 μs ± 449 ns,  20 KB allocated,  14 B  copied, 6.0 MB peak memory
+  null.intersection:true:  OK
+    3.92 μs ± 227 ns,  18 KB allocated,   3 B  copied, 6.0 MB peak memory
+
+
+# PR 2^8
+  unions:                  OK
+    5.43 μs ± 530 ns,  57 KB allocated,  81 B  copied, 6.0 MB peak memory, 22% more than baseline
+  union:                   OK
+    3.80 μs ± 222 ns,  38 KB allocated,  53 B  copied, 6.0 MB peak memory, 14% less than baseline
+  difference:              OK
+    2.30 μs ± 214 ns,  18 KB allocated,  13 B  copied, 6.0 MB peak memory, 45% less than baseline
+  symmetricDifference:     OK
+    2.29 μs ± 206 ns,  18 KB allocated,  13 B  copied, 6.0 MB peak memory, 49% less than baseline
+  intersection:            OK
+    2.46 μs ± 222 ns,  19 KB allocated,  14 B  copied, 6.0 MB peak memory, 46% less than baseline
+  disjoint:false:          OK
+    50.1 ns ± 4.0 ns, 752 B  allocated,   0 B  copied, 6.0 MB peak memory, 84% less than baseline
+  disjoint:true:           OK
+    3.28 μs ± 214 ns,  14 KB allocated,   1 B  copied, 6.0 MB peak memory, 30% less than baseline
+  isSubsetOf:false:        OK
+    34.2 ns ± 3.3 ns, 720 B  allocated,   0 B  copied, 6.0 MB peak memory, 40% less than baseline
+  isSubsetOf:true:         OK
+    3.28 μs ± 219 ns,  21 KB allocated,   2 B  copied, 6.0 MB peak memory, 55% more than baseline
+  null.intersection:false: OK
+    2.47 μs ± 217 ns,  19 KB allocated,  14 B  copied, 6.0 MB peak memory, 46% less than baseline
+  null.intersection:true:  OK
+    1.51 μs ± 104 ns, 7.0 KB allocated,   0 B  copied, 6.0 MB peak memory, 61% less than baseline
+
+
+
+
+
+
+
+Should be extendable to the `Map` equivalents and to `Map`/`Set` mixes like `restrictKeys`, but I wanted to first get feedback on this very debatable change.
+
+The implementations here grab the root of one tree as a proxy for median value, then find its place in the other tree to split that one as well so that the problem is divided into two smaller ones on smaller tree pairs.
+This has the advantage that it's highly parallelizable.
+However, I don't think we're actually leveraging that?
+Seems to me that always doubling parallelism on every layer would backfire from contention and overhead so we'd need to require/choose a tree size/depth cutoff and also take `numCapabilities` or so into account.
+
+Given we can convert to/from lists in linear time, and that we can merge two ordered sequences in linear time, I had a go at the single threaded friendly implementation for `Set`.
+The benchmark results show some potential
+
+
+Baseline
+```
+  unions:                  OK
+    83.0 μs ± 7.9 μs, 477 KB allocated, 9.8 KB copied, 9.0 MB peak memory
+  union:                   OK
+    82.9 μs ± 6.7 μs, 477 KB allocated, 9.8 KB copied, 9.0 MB peak memory
+  difference:              OK
+    82.4 μs ± 7.6 μs, 343 KB allocated, 3.4 KB copied, 9.0 MB peak memory
+  symmetricDifference:     OK
+    87.0 μs ± 7.9 μs, 320 KB allocated, 2.9 KB copied, 9.0 MB peak memory
+  intersection:            OK
+    86.8 μs ± 6.8 μs, 322 KB allocated, 2.9 KB copied, 9.0 MB peak memory
+  disjoint:false:          OK
+    399  ns ±  26 ns, 2.0 KB allocated,   0 B  copied, 9.0 MB peak memory
+  disjoint:true:           OK
+    83.2 μs ± 7.8 μs, 236 KB allocated, 128 B  copied, 9.0 MB peak memory
+  null.intersection:false: OK
+    85.4 μs ± 4.4 μs, 322 KB allocated, 2.9 KB copied, 9.0 MB peak memory
+  null.intersection:true:  OK
+    69.7 μs ± 4.1 μs, 305 KB allocated, 163 B  copied, 9.0 MB peak memory
+```
+
+With this PR
+```
+  unions:                  OK
+    98.4 μs ± 7.0 μs, 897 KB allocated,  25 KB copied, 9.0 MB peak memory, 25% more than baseline
+  union:                   OK
+    64.1 μs ± 3.6 μs, 608 KB allocated,  16 KB copied, 9.0 MB peak memory, 18% less than baseline
+  difference:              OK
+    37.6 μs ± 3.5 μs, 288 KB allocated, 3.2 KB copied,  10 MB peak memory, 53% less than baseline
+  symmetricDifference:     OK
+    38.4 μs ± 3.8 μs, 288 KB allocated, 3.2 KB copied,  10 MB peak memory, 53% less than baseline
+  intersection:            OK
+    40.5 μs ± 1.4 μs, 304 KB allocated, 3.2 KB copied,  10 MB peak memory, 50% less than baseline
+  disjoint:false:          OK
+    57.7 ns ± 3.6 ns, 1.2 KB allocated,   0 B  copied,  10 MB peak memory, 84% less than baseline
+  disjoint:true:           OK
+    49.9 μs ± 3.7 μs, 224 KB allocated,  42 B  copied,  10 MB peak memory, 36% less than baseline
+  null.intersection:false: OK
+    40.1 μs ± 1.8 μs, 304 KB allocated, 3.2 KB copied,  10 MB peak memory, 51% less than baseline
+  null.intersection:true:  OK
+    25.1 μs ± 2.0 μs, 112 KB allocated,  13 B  copied,  10 MB peak memory, 61% less than baseline
+```
+
+I believe the reason `unions` ends up slower is because it starts folding with `empty`, so we get an extra round of merging unless we keep the `Tip` short-circuits on `union`. I tried adding that back to all the top-level bindings and while that made `unions` mirror the speedups (the benchmark uses a 2-element list afterall), a lot of the gains elsewhere got nerfed for some reason?
+```
+  unions:                  OK
+    67.6 μs ± 3.4 μs, 609 KB allocated,  16 KB copied, 9.0 MB peak memory, 18% less than baseline
+  union:                   OK
+    67.4 μs ± 3.9 μs, 608 KB allocated,  16 KB copied, 9.0 MB peak memory, 17% less than baseline
+  difference:              OK
+    75.9 μs ± 7.3 μs, 513 KB allocated, 4.6 KB copied, 9.0 MB peak memory,  9% less than baseline
+  symmetricDifference:     OK
+    76.6 μs ± 6.9 μs, 512 KB allocated, 4.6 KB copied, 9.0 MB peak memory, 13% less than baseline
+  intersection:            OK
+    79.1 μs ± 3.5 μs, 529 KB allocated, 4.6 KB copied, 9.0 MB peak memory,  8% less than baseline
+  disjoint:false:          OK
+    62.0 ns ± 3.3 ns, 1.2 KB allocated,   0 B  copied, 9.0 MB peak memory, 84% less than baseline
+  disjoint:true:           OK
+    52.9 μs ± 4.3 μs, 224 KB allocated,  44 B  copied, 9.0 MB peak memory, 37% less than baseline
+  isSubsetOf:false:        OK
+    50.0 ns ± 3.2 ns, 1.2 KB allocated,   0 B  copied, 9.0 MB peak memory, 46% less than baseline
+  isSubsetOf:true:         OK
+    61.5 μs ± 3.6 μs, 336 KB allocated,  66 B  copied, 9.0 MB peak memory, 60% more than baseline
+  null.intersection:false: OK
+    78.9 μs ± 3.6 μs, 529 KB allocated, 4.6 KB copied, 9.0 MB peak memory,  8% less than baseline
+  null.intersection:true:  OK
+    37.4 μs ± 3.3 μs, 224 KB allocated,  45 B  copied, 9.0 MB peak memory, 46% less than baseline
+```
+
+I think in theory we could still trade asymptotics for parallelism by doing the bisect-with-median maneuver on list/vector by messing with indexes, but that sounds like educated guesswork without much more elaborate benchmarks?
